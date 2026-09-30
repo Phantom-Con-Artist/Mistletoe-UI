@@ -1,11 +1,15 @@
 /*
-    Mistletoe Arc: open apps on a shallow semicircle, with the active app
-    always at its crest. Apps keep a stable order; switching windows slides
-    the arc so the newly active app glides into the center and the others
-    step aside left or right.
+    Mistletoe Arc.
 
-    Click: activate (or minimize if already active). Wheel: step to the
-    neighbouring app. Middle-click: open a new window of that app.
+    At rest it is a quiet strip: the current app's icon with its live CPU
+    and memory use, dimmed so it never competes with your work. Hovering it
+    brightens the strip and raises the arc above it: every open app on a
+    semicircle, active app at the crest. The arc is a tooltip-type window
+    that never takes keyboard focus, so peeking at it can't disturb the app
+    you are typing in.
+
+    Arc: click to activate (or minimize if already active), wheel to step
+    through apps, middle-click for a new window.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -13,31 +17,46 @@ import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
 import org.kde.taskmanager as TaskManager
+import org.kde.ksysguard.process as Process
 
 PlasmoidItem {
     id: root
-
-    // ---- Geometry -------------------------------------------------------
-    readonly property real radius: 170
-    readonly property real stepAngle: 11        // degrees between neighbours
-    readonly property int reach: 3              // apps shown on each side
-    readonly property real iconCenter: 34
-    readonly property real iconSide: 24
-    readonly property real topPad: 3
 
     // Rows that are real app windows, in display order. Our own overlay
     // windows (plasmashell) and launcher placeholders are left out.
     property var order: []
     property int activeRow: -1
     readonly property int activeRank: Math.max(0, order.indexOf(activeRow))
-    property string hoverName: ""
+    readonly property bool hasActive: order.indexOf(activeRow) >= 0
+
+    readonly property string activeName: roleOf(activeRow, TaskManager.AbstractTasksModel.AppName)
+        || roleOf(activeRow, Qt.DisplayRole)
+    readonly property var activeIcon: activeRow >= 0 ? tasks.data(tasks.makeModelIndex(activeRow), Qt.DecorationRole) : ""
+    readonly property string activeAppId: roleOf(activeRow, TaskManager.AbstractTasksModel.AppId)
+
+    // Live usage of the active app, summed over all its processes.
+    property string cpuText: "–"
+    property string memText: "–"
+
+    // Hover state: the strip or the raised arc.
+    property bool stripHovered: false
+    property bool arcHovered: false
+    readonly property bool expanded: (stripHovered || arcHovered) && order.length > 0
 
     preferredRepresentation: fullRepresentation
     compactRepresentation: null
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
 
+    function roleOf(row, role) {
+        if (row < 0 || row >= tasks.count) {
+            return "";
+        }
+        return String(tasks.data(tasks.makeModelIndex(row), role) || "");
+    }
+
     function rebuildOrder() {
         const rows = [];
+        let active = -1;
         for (let i = 0; i < tasks.count; ++i) {
             const idx = tasks.makeModelIndex(i);
             const appId = String(tasks.data(idx, TaskManager.AbstractTasksModel.AppId) || "");
@@ -45,8 +64,18 @@ PlasmoidItem {
                 continue;
             }
             rows.push(i);
+            if (tasks.data(idx, TaskManager.AbstractTasksModel.IsActive)) {
+                active = i;
+            }
         }
         order = rows;
+        // Keep the last real app when focus goes to the desktop or a shell
+        // surface, so the strip doesn't flicker to nothing.
+        if (active >= 0) {
+            activeRow = active;
+        } else if (rows.indexOf(activeRow) < 0) {
+            activeRow = rows.length > 0 ? rows[0] : -1;
+        }
     }
 
     function activate(row, isActive, isGroup, childCount) {
@@ -73,6 +102,38 @@ PlasmoidItem {
         }
     }
 
+    // Find the active app in System Monitor's per-application model. Match
+    // the desktop file id (AppId + ".desktop") first, then the display
+    // name, since some apps report a window id unlike their desktop file.
+    function refreshUsage() {
+        const id = activeAppId.toLowerCase();
+        const name = activeName.toLowerCase();
+        if (!id && !name) {
+            cpuText = memText = "–";
+            return;
+        }
+        const clean = (s) => String(s || "").replace(/\u200b/g, "");
+        let hit = -1;
+        for (let r = 0; r < appStats.rowCount() && hit < 0; ++r) {
+            const menuId = String(appStats.data(appStats.index(r, 0), Qt.DisplayRole) || "").toLowerCase();
+            if (id && (menuId === id + ".desktop" || menuId === id)) {
+                hit = r;
+            }
+        }
+        for (let r = 0; r < appStats.rowCount() && hit < 0; ++r) {
+            if (name && String(appStats.data(appStats.index(r, 3), Qt.DisplayRole) || "").toLowerCase() === name) {
+                hit = r;
+            }
+        }
+        if (hit < 0) {
+            cpuText = memText = "–";
+            return;
+        }
+        const cpu = Number(appStats.data(appStats.index(hit, 1), Process.ProcessDataModel.Value)) || 0;
+        cpuText = cpu < 10 ? cpu.toFixed(1) + "%" : Math.round(cpu) + "%";
+        memText = clean(appStats.data(appStats.index(hit, 2), Qt.DisplayRole)).replace(/\s*([KMGT])iB/, "$1") || "–";
+    }
+
     TaskManager.VirtualDesktopInfo {
         id: desktops
     }
@@ -92,130 +153,131 @@ PlasmoidItem {
         onCountChanged: root.rebuildOrder()
         onRowsMoved: root.rebuildOrder()
         onModelReset: root.rebuildOrder()
+        onDataChanged: root.rebuildOrder()
         Component.onCompleted: root.rebuildOrder()
     }
 
-    fullRepresentation: Item {
-        id: arc
+    Process.ApplicationDataModel {
+        id: appStats
+        enabledAttributes: ["menuId", "usage", "memory", "appName"]
+    }
 
-        readonly property real halfSpan: root.radius * Math.sin((root.reach + 0.5) * root.stepAngle * Math.PI / 180)
-        Layout.minimumWidth: Math.ceil(2 * halfSpan + root.iconSide + 8)
-        Layout.preferredWidth: Layout.minimumWidth
-        Layout.minimumHeight: 60
-        Layout.preferredHeight: 64
+    Timer {
+        interval: 1500
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.refreshUsage()
+    }
+    onActiveAppIdChanged: refreshUsage()
+
+    // The raised arc, above the strip. Tooltip-type and focus-less, so it
+    // floats over apps without ever becoming the active window.
+    PlasmaCore.Dialog {
+        id: popup
+        visualParent: root.fullRepresentationItem
+        location: PlasmaCore.Types.BottomEdge
+        type: PlasmaCore.Dialog.Tooltip
+        flags: Qt.WindowDoesNotAcceptFocus | Qt.WindowStaysOnTopHint
+        backgroundHints: PlasmaCore.Dialog.NoBackground
+        hideOnWindowDeactivate: false
+        visible: hideDelay.expandedLatched
+
+        mainItem: ArcView {
+            tasks: tasks
+            order: root.order
+            activeRank: root.activeRank
+            activeName: root.activeName
+            onActivateRow: (row, isActive, isGroup, childCount) => root.activate(row, isActive, isGroup, childCount)
+            onNewInstance: (row) => tasks.requestNewInstance(tasks.makeModelIndex(row))
+            onStepRequested: (direction) => root.step(direction)
+
+            HoverHandler {
+                onHoveredChanged: root.arcHovered = hovered
+            }
+        }
+    }
+
+    // Short grace period so moving the pointer from the strip up into the
+    // arc doesn't close it on the way.
+    Timer {
+        id: hideDelay
+        property bool expandedLatched: false
+        interval: 260
+        onTriggered: expandedLatched = root.expanded
+    }
+    onExpandedChanged: {
+        if (expanded) {
+            hideDelay.stop();
+            hideDelay.expandedLatched = true;
+        } else {
+            hideDelay.restart();
+        }
+    }
+
+    // ---- Resting strip --------------------------------------------------
+    fullRepresentation: MouseArea {
+        id: strip
 
         Kirigami.Theme.colorSet: Kirigami.Theme.Window
         Kirigami.Theme.inherit: false
-        readonly property color ink: Kirigami.Theme.backgroundColor
-        readonly property color bone: Kirigami.Theme.textColor
-        readonly property color gold: Kirigami.Theme.focusColor
 
-        function spot(pos) {
-            const a = pos * root.stepAngle * Math.PI / 180;
-            return Qt.point(width / 2 + root.radius * Math.sin(a),
-                            root.topPad + root.iconCenter / 2 + root.radius * (1 - Math.cos(a)));
-        }
+        // Fixed width so live numbers never make the panel jitter.
+        Layout.minimumWidth: 168
+        Layout.preferredWidth: 168
+        Layout.minimumHeight: 20
 
-        WheelHandler {
-            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-            onWheel: (event) => root.step(event.angleDelta.y > 0 ? -1 : 1)
-        }
+        hoverEnabled: true
+        onContainsMouseChanged: root.stripHovered = containsMouse
+        onClicked: if (root.hasActive) tasks.requestToggleMinimized(tasks.makeModelIndex(root.activeRow))
+        onWheel: (wheel) => root.step(wheel.angleDelta.y > 0 ? -1 : 1)
 
-        // Hairline gold orbit through the icons.
-        Canvas {
-            anchors.fill: parent
-            opacity: root.order.length > 1 ? 0.35 : 0
-            onPaint: {
-                const ctx = getContext("2d");
-                ctx.reset();
-                ctx.strokeStyle = arc.gold;
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                const span = (root.reach + 0.4) * root.stepAngle * Math.PI / 180;
-                ctx.arc(width / 2, root.topPad + root.iconCenter / 2 + root.radius, root.radius,
-                        -Math.PI / 2 - span, -Math.PI / 2 + span);
-                ctx.stroke();
+        readonly property real side: Math.min(height, 32)
+        readonly property bool lit: root.expanded
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 10
+            opacity: strip.lit ? 1 : 0.55
+            Behavior on opacity {
+                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
             }
-            onWidthChanged: requestPaint()
-        }
 
-        Repeater {
-            model: tasks
-            delegate: Item {
-                id: task
+            Kirigami.Icon {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.round(strip.side * 0.62)
+                height: width
+                source: root.activeIcon || "window-symbolic"
+                animated: false
+            }
 
-                required property int index
-                required property var model
-
-                readonly property int rank: root.order.indexOf(index)
-                readonly property bool isActive: model.IsActive === true
-                // Animated slot relative to the crest: 0 = center.
-                property real pos: rank - root.activeRank
-                Behavior on pos {
-                    NumberAnimation { duration: 360; easing.type: Easing.OutCubic }
-                }
-                readonly property real away: Math.min(1, Math.abs(pos))
-                readonly property real size: root.iconCenter + (root.iconSide - root.iconCenter) * away
-                readonly property point at: arc.spot(pos)
-
-                onIsActiveChanged: if (isActive && rank >= 0) root.activeRow = index
-                Component.onCompleted: if (isActive && rank >= 0) root.activeRow = index
-
-                visible: rank >= 0 && Math.abs(pos) <= root.reach + 0.6
-                width: size
-                height: size
-                x: at.x - width / 2
-                y: at.y - height / 2
-                z: 10 - Math.abs(pos)
-                opacity: (model.IsMinimized ? 0.45 : 1) * Math.max(0, Math.min(1, (root.reach + 0.6 - Math.abs(pos)) / 1.1))
-
-                Kirigami.Icon {
-                    anchors.fill: parent
-                    source: task.model.decoration
-                    active: mouse.containsMouse
-                    animated: false
-                }
-
-                MouseArea {
-                    id: mouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                    onEntered: root.hoverName = task.model.AppName || task.model.display || ""
-                    onExited: root.hoverName = ""
-                    onClicked: (event) => {
-                        if (event.button === Qt.MiddleButton) {
-                            tasks.requestNewInstance(tasks.makeModelIndex(task.index));
-                        } else {
-                            root.activate(task.index, task.isActive, task.model.IsGroupParent === true,
-                                          task.model.ChildCount || 0);
-                        }
+            Repeater {
+                model: [
+                    { key: "CPU", value: root.cpuText },
+                    { key: "RAM", value: root.memText }
+                ]
+                Row {
+                    required property var modelData
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+                    Text {
+                        anchors.baseline: valueText.baseline
+                        text: modelData.key
+                        color: Kirigami.Theme.focusColor
+                        font.family: "Exo 2"
+                        font.pixelSize: 8
+                        font.letterSpacing: 1.5
+                        font.weight: Font.Medium
+                    }
+                    Text {
+                        id: valueText
+                        text: modelData.value
+                        color: Kirigami.Theme.textColor
+                        font.family: "Exo 2"
+                        font.pixelSize: 11
                     }
                 }
             }
-        }
-
-        // Name of the app at the crest (or the one under the pointer).
-        Text {
-            readonly property string activeName: {
-                const r = root.order[root.activeRank];
-                if (r === undefined) {
-                    return "";
-                }
-                return String(tasks.data(tasks.makeModelIndex(r), TaskManager.AbstractTasksModel.AppName)
-                              || tasks.data(tasks.makeModelIndex(r), Qt.DisplayRole) || "");
-            }
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: root.topPad + root.iconCenter + 3
-            width: 96
-            horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
-            text: (root.hoverName || activeName).toUpperCase()
-            color: arc.gold
-            font.family: "Exo 2"
-            font.pixelSize: 9
-            font.letterSpacing: 1.5
-            font.weight: Font.Medium
         }
     }
 }

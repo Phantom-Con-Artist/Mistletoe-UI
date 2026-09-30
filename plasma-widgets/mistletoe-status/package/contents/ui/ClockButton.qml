@@ -106,7 +106,7 @@ MouseArea {
                     color: chip.info.on ? Kirigami.Theme.textColor
                         : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.45)
                     font.family: "Exo 2"
-                    font.pixelSize: Math.round(button.side * 0.27)
+                    font.pixelSize: Math.round(button.side * 0.3)
                 }
             }
         }
