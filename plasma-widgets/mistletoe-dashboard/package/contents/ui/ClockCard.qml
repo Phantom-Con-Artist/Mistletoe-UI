@@ -8,13 +8,44 @@
     tried and renders nothing offscreen, so it is avoided.)
 */
 import QtQuick
+import QtQuick.Window
+import org.kde.plasma.plasma5support as P5Support
 
 Item {
     id: card
 
     required property var dash
 
-    readonly property color shade: Qt.rgba(0, 0, 0, 0.6)
+    // Black or white, whichever reads against the wallpaper behind the
+    // clock (measured by the bridge from the card's desktop position; again
+    // every minute, in case the wallpaper changes). No glow, no plate.
+    property bool onLight: false
+    readonly property color face: onLight ? "#0b0c0e" : card.dash.bone
+    readonly property color shade: onLight ? Qt.rgba(1, 1, 1, 0.35) : Qt.rgba(0, 0, 0, 0.6)
+
+    P5Support.DataSource {
+        id: probe
+        engine: "executable"
+        onNewData: (source, data) => {
+            card.onLight = String(data.stdout || "").trim() === "light";
+            disconnectSource(source);
+        }
+    }
+    function measure() {
+        const c = card.dash.container();
+        if (!c) {
+            return;
+        }
+        probe.connectSource("$HOME/.local/bin/mistletoe-menu backdrop " + [Math.round(c.x), Math.round(c.y),
+            Math.round(c.width), Math.round(c.height), Screen.width, Screen.height].join(" ") + " #" + Date.now());
+    }
+    Timer {
+        interval: 60000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: card.measure()
+    }
     // Everything scales with the card: 112px time at the default 352px.
     readonly property real k: Math.max(0.45, Math.min(1.8, Math.min(width / 352, height / 224)))
 
@@ -46,7 +77,7 @@ Item {
         Text {
             id: time
             text: Qt.formatTime(card.now, "hh:mm")
-            color: card.dash.bone
+            color: card.face
             style: Text.Raised
             styleColor: card.shade
             font.family: "Mistletoe Display"
@@ -60,7 +91,7 @@ Item {
             height: 1
             Rectangle {
                 anchors.fill: parent
-                color: card.dash.tint(card.dash.bone, 0.18)
+                color: Qt.rgba(card.face.r, card.face.g, card.face.b, 0.18)
             }
             Rectangle {
                 width: parent.width * card.now.getSeconds() / 59
@@ -75,7 +106,7 @@ Item {
         Text {
             topPadding: Math.round(12 * card.k)
             text: Qt.formatDate(card.now, "d MMMM yyyy")
-            color: card.dash.tint(card.dash.bone, 0.75)
+            color: Qt.rgba(card.face.r, card.face.g, card.face.b, 0.75)
             style: Text.Raised
             styleColor: card.shade
             font.family: "Mistletoe Accent"

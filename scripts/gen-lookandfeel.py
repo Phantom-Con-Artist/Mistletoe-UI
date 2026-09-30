@@ -175,8 +175,16 @@ def lock_screen():
     shell = ROOT / "shells" / "org.mistletoe.lockscreen"
     lock = shell / "contents" / "lockscreen"
     lock.mkdir(parents=True, exist_ok=True)
-    for src in sorted((ROOT / "lockscreen").glob("*.qml")) + [ROOT / "plasma-widgets" / "shared" / "Shard.qml"]:
+    shared = ROOT / "plasma-widgets" / "shared"
+    for src in sorted((ROOT / "lockscreen").glob("*.qml")) + [shared / "Shard.qml"]:
         (lock / src.name).write_text(src.read_text())
+    # Defaults for what the bridge writes per machine, and the mark.
+    (lock / "backdrop.js").write_text((ROOT / "lockscreen" / "backdrop.js").read_text())
+    for stale in ("Glow.qml", "config.xml"):
+        if (lock / stale).exists():
+            (lock / stale).unlink()
+    (lock / "mistletoe-mark.svg").write_text((ROOT / "branding" / "mistletoe-mark.svg").read_text())
+
     (shell / "metadata.json").write_text(json.dumps({
         "KPackageStructure": "Plasma/Shell",
         # kscreenlocker rejects shell packages without API version 2 as "outdated".

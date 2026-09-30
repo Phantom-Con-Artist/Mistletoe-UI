@@ -7,7 +7,9 @@
     it always has focus, so you can just start typing. A wrong password
     shakes the shard and shows the message beneath it. Sleep and Switch
     User gems appear, with the name and the hint, only while you're
-    active, and fade after ten idle seconds.
+    active, and fade after ten idle seconds. Top right, the branding:
+    "Fedora Linux 44 using <mark> Mistletoe UI". Text straight on the
+    wallpaper is black or white to suit what is behind it.
 
     Uses kscreenlocker's context objects: authenticator (startAuthenticating,
     respond, failed/succeeded, messages) and kscreenlocker_userName.
@@ -16,6 +18,7 @@ import QtQuick
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.private.sessions
 import org.kde.plasma.private.keyboardindicator as KeyboardIndicator
+import "backdrop.js" as Backdrop
 
 Item {
     id: ui
@@ -28,6 +31,23 @@ Item {
     function tint(c, a) {
         return Qt.rgba(c.r, c.g, c.b, a);
     }
+
+    // Text straight on the wallpaper is black or white, whichever reads
+    // against what is behind it (measured by mistletoe-menu when the
+    // wallpaper changes; see backdrop.js). No glows, no plates.
+    readonly property color black: "#0b0c0e"
+    readonly property color white: "#f4f1ea"
+    // (Not named "ink": that is the theme background colour above, and the
+    // clash made every call fail and the text fall back to black.)
+    function textOn(onLight) {
+        return onLight ? black : white;
+    }
+    function shadowOn(onLight) {
+        return onLight ? Qt.rgba(1, 1, 1, 0.35) : Qt.rgba(0, 0, 0, 0.6);
+    }
+    readonly property bool clockLight: Backdrop.clockOnLight
+    readonly property bool promptLight: Backdrop.promptOnLight
+    readonly property bool badgeLight: Backdrop.badgeOnLight
 
     // Shown while you're active; the clock is always there.
     property bool active: false
@@ -139,26 +159,6 @@ Item {
         onTriggered: ui.now = new Date()
     }
 
-    // Soft glows (no plate, no blur) so the clock and the prompt read over
-    // bright wallpapers.
-    Glow {
-        x: clockColumn.x - clockColumn.width * 0.35
-        y: clockColumn.y - clockColumn.height * 0.3
-        width: clockColumn.width * 1.7
-        height: clockColumn.height * 1.6
-        color: ui.ink
-        strength: 0.55
-    }
-    Glow {
-        x: prompt.x - prompt.width * 0.4
-        y: prompt.y - 60
-        width: prompt.width * 1.8
-        height: prompt.height + 120
-        color: ui.ink
-        strength: 0.9
-        opacity: prompt.opacity
-    }
-
     Column {
         id: clockColumn
         x: Math.round(ui.width * 0.07)
@@ -168,16 +168,16 @@ Item {
             text: Qt.formatDate(ui.now, "dddd").toUpperCase()
             color: ui.gold
             style: Text.Raised
-            styleColor: Qt.rgba(0, 0, 0, 0.6)
+            styleColor: ui.shadowOn(ui.clockLight)
             font.family: "Mistletoe Display"
             font.pixelSize: Math.round(ui.height * 0.022)
             font.letterSpacing: Math.round(ui.height * 0.008)
         }
         Text {
             text: Qt.formatTime(ui.now, "hh:mm")
-            color: ui.bone
+            color: ui.textOn(ui.clockLight)
             style: Text.Raised
-            styleColor: Qt.rgba(0, 0, 0, 0.6)
+            styleColor: ui.shadowOn(ui.clockLight)
             font.family: "Mistletoe Display"
             font.pixelSize: Math.round(ui.height * 0.2)
         }
@@ -189,9 +189,9 @@ Item {
         Text {
             topPadding: Math.round(ui.height * 0.014)
             text: Qt.formatDate(ui.now, "d MMMM yyyy")
-            color: ui.tint(ui.bone, 0.85)
+            color: ui.tint(ui.textOn(ui.clockLight), 0.85)
             style: Text.Raised
-            styleColor: Qt.rgba(0, 0, 0, 0.6)
+            styleColor: ui.shadowOn(ui.clockLight)
             font.family: "Mistletoe Accent"
             font.pixelSize: Math.round(ui.height * 0.03)
         }
@@ -229,7 +229,9 @@ Item {
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: String(kscreenlocker_userName || "").toUpperCase()
-                color: ui.gold
+                color: ui.textOn(ui.promptLight)
+                style: Text.Raised
+                styleColor: ui.shadowOn(ui.promptLight)
                 font.family: "Mistletoe Display"
                 font.pixelSize: 14
                 font.letterSpacing: 4
@@ -315,10 +317,58 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 text: [capsLock.locked ? i18n("Caps Lock is on") : "", ui.message].filter(s => s).join("  ·  ")
-                color: ui.gold
+                color: ui.textOn(ui.promptLight)
+                style: Text.Raised
+                styleColor: ui.shadowOn(ui.promptLight)
                 font.family: "Mistletoe Text"
                 font.pixelSize: 13
             }
+        }
+    }
+
+    // ---- Branding, top right: "Fedora Linux 44 using <mark> Mistletoe UI" ----
+    Row {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.rightMargin: Math.round(ui.height * 0.045)
+        anchors.topMargin: Math.round(ui.height * 0.035)
+        spacing: 8
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: String(Backdrop.distro || "Fedora Linux").toUpperCase()
+            color: ui.tint(ui.textOn(ui.badgeLight), 0.8)
+            style: Text.Raised
+            styleColor: ui.shadowOn(ui.badgeLight)
+            font.family: "Mistletoe Display"
+            font.pixelSize: 11
+            font.letterSpacing: 2
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: i18n("using")
+            color: ui.tint(ui.textOn(ui.badgeLight), 0.6)
+            style: Text.Raised
+            styleColor: ui.shadowOn(ui.badgeLight)
+            font.family: "Mistletoe Accent"
+            font.pixelSize: 13
+        }
+        Image {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 22
+            height: 22
+            sourceSize: Qt.size(44, 44)
+            source: Qt.resolvedUrl("mistletoe-mark.svg")
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            textFormat: Text.StyledText
+            text: "Mistletoe <font color=\"" + ui.gold + "\">UI</font>"
+            color: ui.textOn(ui.badgeLight)
+            style: Text.Raised
+            styleColor: ui.shadowOn(ui.badgeLight)
+            font.family: "Mistletoe Text"
+            font.pixelSize: 13
+            font.weight: Font.DemiBold
         }
     }
 

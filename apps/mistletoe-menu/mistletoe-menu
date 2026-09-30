@@ -18,6 +18,10 @@ org.kde.kappmenuview on the session bus, so `serve` holds that name.
                                            text); no arguments re-applies
   mistletoe-menu edition NAME              switch edition: dark, light, neon, ember
   mistletoe-menu options                   editions and font choices as JSON
+  mistletoe-menu backdrop X Y W H SW SH    "light" or "dark": the wallpaper's
+                                           brightness behind a desktop rect
+  mistletoe-menu lock-settings             refresh what the lock screen reads
+                                           (text contrast, distro line)
 
 The dial gets SERVICE and PATH for the active window from Plasma's task
 model and runs `dump` / `click` through Plasma's executable data source.
@@ -262,6 +266,7 @@ def sync_wallpaper():
     subprocess.run(["kwriteconfig6", "--file", "kscreenlockerrc", "--group", "Greeter", "--group", "Wallpaper",
                     "--group", "org.kde.image", "--group", "General", "--key", "Image",
                     (DATA / "wallpapers" / want).as_uri()], capture_output=True)
+    lock_settings()
 
 
 # ---- Fonts and editions ------------------------------------------------------
@@ -352,6 +357,80 @@ def options():
     print(json.dumps(groups))
 
 
+# ---- Backdrop brightness ---------------------------------------------------------
+def wallpaper_luma(sw, sh):
+    """The current wallpaper as a greyscale image scaled and cropped to the
+    screen, the way Plasma's "Scaled and Cropped" fill shows it (or None)."""
+    from PIL import Image
+    images = current_wallpapers()
+    if not images:
+        return None
+    path = Path(unquote(urlparse(images[0]).path))
+    if path.is_dir():   # a wallpaper package: its largest image
+        pics = sorted((path / "contents" / "images").glob("*"), key=lambda p: p.stat().st_size)
+        if not pics:
+            return None
+        path = pics[-1]
+    im = Image.open(path).convert("L")
+    scale = max(sw / im.width, sh / im.height)
+    im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))))
+    ox, oy = (im.width - sw) // 2, (im.height - sh) // 2
+    return im.crop((ox, oy, ox + sw, oy + sh))
+
+
+def region_light(im, x, y, w, h, veil=0.0):
+    """Mean brightness of a rectangle, after a dark veil of this opacity."""
+    region = im.crop((max(0, int(x)), max(0, int(y)), min(im.width, int(x + w)), min(im.height, int(y + h))))
+    hist = region.histogram()
+    mean = sum(i * n for i, n in enumerate(hist)) / max(1, sum(hist)) / 255
+    return mean * (1 - veil) + 0.05 * veil > 0.5
+
+
+def backdrop(x, y, w, h, sw, sh):
+    """Is the wallpaper behind this desktop rectangle light or dark? Text
+    drawn straight on the wallpaper picks black or white from this."""
+    im = wallpaper_luma(sw, sh)
+    print("light" if im and region_light(im, x, y, w, h) else "dark")
+
+
+def screen_size():
+    try:
+        out = subprocess.run(["kscreen-doctor", "-j"], capture_output=True, text=True, timeout=5).stdout
+        for o in json.loads(out)["outputs"]:
+            if o.get("enabled") and o.get("size"):
+                return o["size"]["width"], o["size"]["height"]
+    except Exception:
+        pass
+    return 1920, 1080
+
+
+def lock_settings():
+    """What the lock screen can't work out itself: whether the wallpaper,
+    under its dimming veil, is light behind the clock, the prompt and the
+    branding, and the distro line (see lockscreen/backdrop.js)."""
+    sw, sh = screen_size()
+    im = wallpaper_luma(sw, sh)
+    values = {}
+    if im:
+        values["clockOnLight"] = region_light(im, sw * 0.07, sh * 0.3, sw * 0.32, sh * 0.3, veil=0.38)
+        values["promptOnLight"] = region_light(im, (sw - 420) / 2, sh * 0.66, 420, 40, veil=0.62)
+        values["badgeOnLight"] = region_light(im, sw - 540, 0, 540, sh * 0.08, veil=0.38)
+    try:
+        info = dict(line.split("=", 1) for line in Path("/etc/os-release").read_text().splitlines() if "=" in line)
+        values["distro"] = (info.get("NAME", "").strip('"') + " " + info.get("VERSION_ID", "").strip('"')).strip()
+    except OSError:
+        pass
+    # Written into the installed copy of the lock screen package (install.sh
+    # copies it rather than linking, so the repo stays clean).
+    target = DATA / "plasma" / "shells" / "org.mistletoe.lockscreen" / "contents" / "lockscreen" / "backdrop.js"
+    if target.parent.is_dir() and not target.parent.resolve().is_relative_to(Path(__file__).resolve().parents[2]):
+        js = ["// Written by mistletoe-menu lock-settings; see lockscreen/backdrop.js in the repo.", ".pragma library"]
+        for key, value in values.items():
+            js.append(f"var {key} = {json.dumps(value)};")
+        target.write_text("\n".join(js) + "\n")
+    return values
+
+
 def serve():
     Gio.bus_own_name_on_connection(bus(), "org.kde.kappmenuview", Gio.BusNameOwnerFlags.NONE, None, None)
     GLib.MainLoop().run()
@@ -375,6 +454,10 @@ def main(argv):
             edition(argv[1])
         elif argv[:1] == ["options"]:
             options()
+        elif argv[:1] == ["backdrop"] and len(argv) == 7:
+            backdrop(*map(int, argv[1:]))
+        elif argv[:1] == ["lock-settings"]:
+            print(json.dumps(lock_settings()))
         else:
             print(__doc__.strip(), file=sys.stderr)
             return 2

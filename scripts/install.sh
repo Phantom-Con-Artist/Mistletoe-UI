@@ -29,8 +29,12 @@ done
 for k in "$ROOT"/konsole/*; do
     link "$k" "$DATA/konsole/$(basename "$k")"
 done
+# Shell packages (the lock screen) are *copied*, not linked: the bridge writes
+# machine-specific values into the installed copy (lockscreen/backdrop.js).
 for sh in "$ROOT"/shells/*/; do
-    link "${sh%/}" "$DATA/plasma/shells/$(basename "$sh")"
+    dest="$DATA/plasma/shells/$(basename "$sh")"
+    rm -rf "$dest"; mkdir -p "$(dirname "$dest")"; cp -r "${sh%/}" "$dest"
+    echo "copied $dest"
 done
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
@@ -49,6 +53,7 @@ link "$ROOT/apps/mistletoe-menu/mistletoe-menu.service" "${XDG_CONFIG_HOME:-$HOM
 systemctl --user daemon-reload
 systemctl --user enable --now mistletoe-menu.service >/dev/null 2>&1 && echo "menu bridge running"
 python3 "$ROOT/scripts/gen-settings-index.py" "$DATA/mistletoe/settings.json" | head -1
+"$HOME/.local/bin/mistletoe-menu" lock-settings >/dev/null && echo "lock screen settings written"
 # Font roles (fontconfig aliases); keeps any choice made in the dial.
 "$HOME/.local/bin/mistletoe-menu" fonts >/dev/null && echo "font roles set"
 for f in "$ROOT"/fonts/*/; do
