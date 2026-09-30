@@ -1,0 +1,43 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "widget",
+            "type": "promptString",
+            "description": "Widget folder name inside plasma-widgets/",
+            "default": "my-widget"
+        }
+    ],
+    "tasks": [
+        {
+            "label": "Plasma: preview widget (plasmoidviewer)",
+            "type": "shell",
+            "command": "plasmoidviewer -a ${workspaceFolder}/plasma-widgets/${input:widget}/package",
+            "problemMatcher": []
+        },
+        {
+            "label": "Plasma: install/update widget",
+            "type": "shell",
+            "command": "kpackagetool6 -t Plasma/Applet -u ${workspaceFolder}/plasma-widgets/${input:widget}/package || kpackagetool6 -t Plasma/Applet -i ${workspaceFolder}/plasma-widgets/${input:widget}/package",
+            "problemMatcher": []
+        },
+        {
+            "label": "QML: lint current file",
+            "type": "shell",
+            "command": "/usr/lib64/qt6/bin/qmllint ${file}",
+            "problemMatcher": []
+        },
+        {
+            "label": "Plasma: restart plasmashell",
+            "type": "shell",
+            "command": "systemctl --user restart plasma-plasmashell.service",
+            "problemMatcher": []
+        },
+        {
+            "label": "KWin: reconfigure",
+            "type": "shell",
+            "command": "/usr/lib64/qt6/bin/qdbus org.kde.KWin /KWin reconfigure",
+            "problemMatcher": []
+        }
+    ]
+}

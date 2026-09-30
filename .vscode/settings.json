@@ -1,0 +1,31 @@
+{
+    // QML language server (Qt extension) — use the system Qt 6
+    "qt-qml.qmlls.customExePath": "/usr/lib64/qt6/bin/qmlls",
+    "qt-qml.qmlls.additionalImportPaths": [
+        "/usr/lib64/qt6/qml"
+    ],
+
+    // C++ (KWin effects / C++ plasmoids): CMake + clangd
+    "cmake.generator": "Ninja",
+    "cmake.buildDirectory": "${workspaceFolder}/build/${workspaceFolderBasename}",
+    "cmake.configureOnOpen": false,
+    "cmake.configureSettings": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+    },
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build",
+        "--header-insertion=never"
+    ],
+    "C_Cpp.intelliSenseEngine": "disabled",
+
+    "files.exclude": {
+        "**/build": true
+    },
+    "files.associations": {
+        "metadata.json": "jsonc",
+        "*.knsrc": "ini",
+        "*.desktop": "ini",
+        "*.kcfg": "xml"
+    },
+    "editor.formatOnSave": false
+}
