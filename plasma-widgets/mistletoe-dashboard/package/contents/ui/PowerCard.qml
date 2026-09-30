@@ -84,7 +84,7 @@ RowLayout {
                 }
                 text: cell.modelData.label.toUpperCase()
                 color: card.dash.gold
-                font.family: "Exo 2"
+                font.family: "Mistletoe Display"
                 font.pixelSize: 8
                 font.letterSpacing: 1.5
             }

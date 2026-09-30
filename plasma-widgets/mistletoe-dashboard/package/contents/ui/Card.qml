@@ -22,10 +22,9 @@ Item {
     property bool floating: false
 
     signal pinToggled()
-    // Floating: live window offsets from where the drag started.
-    signal windowDragStarted()
-    signal windowMoveTo(real dx, real dy)
-    signal windowResizeTo(real dw, real dh)
+    // Floating: hand the drag to the compositor.
+    signal windowMove()
+    signal windowResize()
     // Both: the drag finished with this total move / size change.
     signal placed(real dx, real dy, real dw, real dh)
 
@@ -39,15 +38,18 @@ Item {
     width: Math.max(240, parent ? parent.width + growW : 0)
     height: Math.max(64, parent ? parent.height + growH : 0)
 
-    function startDrag() {
+    function startDrag(resizing) {
+        settleTimer.stop();
+        settleEase.stop();
         dragX = dragY = growW = growH = 0;
         if (floating) {
-            windowDragStarted();
+            // The compositor takes over the rest of this drag.
+            resizing ? windowResize() : windowMove();
         }
     }
     function dragTo(dx, dy, resizing) {
         if (floating) {
-            resizing ? windowResizeTo(dx, dy) : windowMoveTo(dx, dy);
+            return;
         } else if (resizing) {
             growW = dx;
             growH = dy;
@@ -56,12 +58,37 @@ Item {
             dragY = dy;
         }
     }
+    // After a docked move: keep the card where it was dropped while the
+    // container animates to (tx, ty), then let go.
+    function settle(c, tx, ty, dx, dy) {
+        const x0 = c.x, y0 = c.y;
+        dragX = Qt.binding(() => x0 + dx - c.x);
+        dragY = Qt.binding(() => y0 + dy - c.y);
+        settleTimer.restart();
+    }
+    Timer {
+        id: settleTimer
+        // Just longer than Plasma's drop animation.
+        interval: 400
+        // Ease the last few pixels of grid snap instead of jumping.
+        onTriggered: settleEase.restart()
+    }
+    ParallelAnimation {
+        id: settleEase
+        NumberAnimation { target: card; property: "dragX"; to: 0; duration: 140; easing.type: Easing.OutCubic }
+        NumberAnimation { target: card; property: "dragY"; to: 0; duration: 140; easing.type: Easing.OutCubic }
+    }
+
     function endDrag(dx, dy, resizing) {
         // Clear the visual offset in the same step the real geometry moves,
         // so there is no flicker between the two.
         const move = resizing ? [0, 0] : [dx, dy];
         const size = resizing ? [dx, dy] : [0, 0];
-        dragX = dragY = growW = growH = 0;
+        growW = growH = 0;
+        if (floating || resizing) {
+            dragX = dragY = 0;
+        }
+        // A docked move hands its offset over to settle() instead.
         placed(move[0], move[1], size[0], size[1]);
     }
 
@@ -137,7 +164,7 @@ Item {
             preventStealing: true
             onPressed: (mouse) => {
                 press = mapToGlobal(mouse.x, mouse.y);
-                card.startDrag();
+                card.startDrag(false);
             }
             onPositionChanged: (mouse) => {
                 const d = offset(mouse);
@@ -188,7 +215,7 @@ Item {
             preventStealing: true
             onPressed: (mouse) => {
                 press = mapToGlobal(mouse.x, mouse.y);
-                card.startDrag();
+                card.startDrag(true);
             }
             onPositionChanged: (mouse) => {
                 const d = offset(mouse);

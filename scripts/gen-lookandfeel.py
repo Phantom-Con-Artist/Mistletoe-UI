@@ -20,8 +20,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "lookandfeel"
 
-# Exo 2 for the UI; monospace stays the system default for terminals.
-FONT = "Exo 2,{size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+# The Mistletoe Text role (a fontconfig alias, Exo 2 by default; see
+# `mistletoe-menu fonts`) for the UI; monospace stays the system default.
+FONT = "Mistletoe Text,{size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
 VARIANTS = {
     "dark": dict(name="Mistletoe Dark", scheme="MistletoeDark", icons="breeze-dark", wallpaper="Mistletoe"),

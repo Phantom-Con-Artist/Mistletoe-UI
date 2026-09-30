@@ -242,7 +242,7 @@ ColumnLayout {
                         Text {
                             text: modelData.key.toUpperCase()
                             color: card.dash.tint(card.dash.bone, 0.6)
-                            font.family: "Exo 2"
+                            font.family: "Mistletoe Display"
                             font.pixelSize: 9
                             font.letterSpacing: 2
                         }
@@ -250,7 +250,7 @@ ColumnLayout {
                     Text {
                         text: modelData.value
                         color: card.dash.bone
-                        font.family: "Exo 2"
+                        font.family: "Mistletoe Accent"
                         font.pixelSize: 26
                         font.weight: Font.Light
                         font.features: { "tnum": 1 }
@@ -259,7 +259,7 @@ ColumnLayout {
                         visible: modelData.sub.length > 0
                         text: modelData.sub
                         color: card.dash.tint(card.dash.bone, 0.5)
-                        font.family: "Exo 2"
+                        font.family: "Mistletoe Text"
                         font.pixelSize: 10
                     }
                 }
@@ -324,7 +324,7 @@ ColumnLayout {
                 text: modelData.text
                 wrapMode: Text.WordWrap
                 color: card.dash.tint(card.dash.bone, 0.85)
-                font.family: "Exo 2"
+                font.family: "Mistletoe Text"
                 font.pixelSize: 13
                 lineHeight: 1.2
             }

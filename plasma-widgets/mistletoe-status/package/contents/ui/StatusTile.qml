@@ -76,7 +76,7 @@ MouseArea {
                 width: parent.width
                 text: tile.label.toUpperCase()
                 color: tile.gold
-                font.family: "Exo 2"
+                font.family: "Mistletoe Display"
                 font.pixelSize: Math.round(9 * tile.unit)
                 font.letterSpacing: 2
                 font.weight: Font.Medium
@@ -86,7 +86,7 @@ MouseArea {
                 width: parent.width
                 text: tile.value
                 color: tile.bone
-                font.family: "Exo 2"
+                font.family: "Mistletoe Text"
                 font.pixelSize: Math.round(13 * tile.unit)
                 elide: Text.ElideRight
             }

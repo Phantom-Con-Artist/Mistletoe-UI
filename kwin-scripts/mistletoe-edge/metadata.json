@@ -6,7 +6,7 @@
                 "Name": "Subhradeep Sarkar"
             }
         ],
-        "Description": "Push the pointer against the left screen edge to open the Mistletoe dial",
+        "Description": "Mistletoe helpers: the left screen edge opens the dial; floating cards stay above windows",
         "EnabledByDefault": false,
         "Icon": "compass",
         "Id": "mistletoe-edge",

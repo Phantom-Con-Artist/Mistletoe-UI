@@ -19,7 +19,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: label.text.toUpperCase()
         color: label.gold
-        font.family: "Exo 2"
+        font.family: "Mistletoe Display"
         font.pixelSize: 10
         font.letterSpacing: 2.5
         font.weight: Font.Medium
@@ -41,7 +41,7 @@ Item {
         elide: Text.ElideRight
         text: label.note
         color: Qt.rgba(label.bone.r, label.bone.g, label.bone.b, 0.7)
-        font.family: "Exo 2"
+        font.family: "Mistletoe Text"
         font.pixelSize: 11
     }
 }

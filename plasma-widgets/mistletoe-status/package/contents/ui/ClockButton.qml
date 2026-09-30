@@ -67,7 +67,7 @@ MouseArea {
                 anchors.baseline: timeText.baseline
                 text: Qt.formatDate(button.time, "ddd d MMM").toUpperCase()
                 color: Kirigami.Theme.focusColor
-                font.family: "Exo 2"
+                font.family: "Mistletoe Display"
                 font.pixelSize: 10
                 font.letterSpacing: 1.5
                 font.weight: Font.Medium
@@ -76,7 +76,7 @@ MouseArea {
                 id: timeText
                 text: Qt.formatTime(button.time, "hh:mm")
                 color: Kirigami.Theme.textColor
-                font.family: "Exo 2"
+                font.family: "Mistletoe Display"
                 font.pixelSize: 16
                 font.features: { "tnum": 1 }
             }
@@ -107,7 +107,7 @@ MouseArea {
                     elide: Text.ElideRight
                     color: chip.info.on ? Kirigami.Theme.textColor
                         : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.45)
-                    font.family: "Exo 2"
+                    font.family: "Mistletoe Text"
                     font.pixelSize: 12
                 }
             }

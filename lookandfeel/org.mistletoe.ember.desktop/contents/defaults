@@ -1,12 +1,12 @@
 [kdeglobals][General]
 ColorScheme=MistletoeEmber
-font=Exo 2,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-menuFont=Exo 2,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-toolBarFont=Exo 2,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
-smallestReadableFont=Exo 2,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+font=Mistletoe Text,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+menuFont=Mistletoe Text,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+toolBarFont=Mistletoe Text,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+smallestReadableFont=Mistletoe Text,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 
 [kdeglobals][WM]
-activeFont=Exo 2,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+activeFont=Mistletoe Text,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 
 [kdeglobals][KDE]
 widgetStyle=Breeze

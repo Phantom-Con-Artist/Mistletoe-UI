@@ -103,7 +103,7 @@ ColumnLayout {
                 readonly property bool current: modelData.music === card.music
                 text: modelData.name.toUpperCase()
                 color: current ? card.dash.gold : card.dash.tint(card.dash.bone, 0.5)
-                font.family: "Exo 2"
+                font.family: "Mistletoe Display"
                 font.pixelSize: 10
                 font.letterSpacing: 2.5
                 font.weight: current ? Font.DemiBold : Font.Normal
@@ -138,7 +138,7 @@ ColumnLayout {
                 color: card.dash.bone
                 selectionColor: card.dash.gold
                 selectedTextColor: card.dash.ink
-                font.family: "Exo 2"
+                font.family: "Mistletoe Text"
                 font.pixelSize: 12
                 onAccepted: {
                     card.search(text);
@@ -303,14 +303,14 @@ ColumnLayout {
                     elide: Text.ElideRight
                     text: card.nowPlaying || (card.music ? i18n("YouTube Music") : i18n("YouTube"))
                     color: card.dash.bone
-                    font.family: "Exo 2"
+                    font.family: "Mistletoe Text"
                     font.pixelSize: 12
                 }
                 Text {
                     visible: card.duration > 0
                     text: card.clock(card.position) + "  /  " + card.clock(card.duration)
                     color: card.dash.tint(card.dash.bone, 0.55)
-                    font.family: "Exo 2"
+                    font.family: "Mistletoe Text"
                     font.pixelSize: 10
                     font.features: { "tnum": 1 }
                 }

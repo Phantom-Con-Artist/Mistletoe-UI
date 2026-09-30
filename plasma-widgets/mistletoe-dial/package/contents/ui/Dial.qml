@@ -45,7 +45,6 @@ Item {
     readonly property color ink: Kirigami.Theme.backgroundColor
     readonly property color bone: Kirigami.Theme.textColor
     readonly property color gold: Kirigami.Theme.focusColor
-    readonly property string face: "Exo 2"
 
     function tint(c, a) {
         return Qt.rgba(c.r, c.g, c.b, a);
@@ -263,7 +262,7 @@ Item {
                 elide: Text.ElideRight
                 text: cat.info.name || ""
                 color: cat.current ? dial.gold : dial.tint(dial.bone, 0.75)
-                font.family: dial.face
+                font.family: "Mistletoe Text"
                 font.pixelSize: cat.current ? 14 : 12
                 font.letterSpacing: cat.current ? 1 : 0.5
                 font.weight: cat.current ? Font.Medium : Font.Normal
@@ -345,7 +344,7 @@ Item {
                         elide: Text.ElideRight
                         text: entry.info.label || ""
                         color: entry.current ? dial.bone : dial.tint(dial.bone, 0.82)
-                        font.family: dial.face
+                        font.family: "Mistletoe Text"
                         font.pixelSize: entry.current ? 15 : 13
                     }
                     Text {
@@ -353,7 +352,7 @@ Item {
                         visible: !!entry.info.hasChildren
                         text: "›"
                         color: dial.gold
-                        font.family: dial.face
+                        font.family: "Mistletoe Text"
                         font.pixelSize: 16
                     }
                 }
@@ -396,7 +395,7 @@ Item {
                     readonly property bool current: modelData.name === dial.mode
                     text: modelData.name.toUpperCase()
                     color: current ? dial.gold : dial.tint(dial.bone, modelData.enabled ? 0.4 : 0.15)
-                    font.family: dial.face
+                    font.family: "Mistletoe Display"
                     font.pixelSize: 11
                     font.letterSpacing: 3
                     font.weight: current ? Font.DemiBold : Font.Normal
@@ -420,7 +419,7 @@ Item {
             elide: Text.ElideRight
             text: (dial.query ? i18n("Search") : dial.context + (dial.trail ? "  ›  " + dial.trail : "")).toUpperCase()
             color: dial.gold
-            font.family: dial.face
+            font.family: "Mistletoe Display"
             font.pixelSize: 11
             font.letterSpacing: 2.5
         }
@@ -431,7 +430,7 @@ Item {
             elide: Text.ElideRight
             text: dial.status || parent.focused.label || ""
             color: dial.bone
-            font.family: dial.face
+            font.family: "Mistletoe Accent"
             font.pixelSize: 34
             font.weight: Font.Light
         }
@@ -443,14 +442,14 @@ Item {
             visible: text.length > 0 && !dial.status
             text: parent.focused.detail || ""
             color: dial.tint(dial.bone, 0.65)
-            font.family: dial.face
+            font.family: "Mistletoe Text"
             font.pixelSize: 14
         }
         Text {
             visible: !!parent.focused.shortcut && !dial.status
             text: parent.focused.shortcut || ""
             color: dial.tint(dial.gold, 0.8)
-            font.family: dial.face
+            font.family: "Mistletoe Text"
             font.pixelSize: 12
             font.letterSpacing: 1
         }
@@ -463,7 +462,7 @@ Item {
                 ? "⌕  " + dial.query + (dial.entries.length === 0 ? "   —  " + i18n("nothing found") : "   ·   " + i18np("%1 match", "%1 matches", dial.entries.length))
                 : i18n("Type to search  ·  ↑↓ scroll  ·  ←→ category  ·  Enter open  ·  Tab mode  ·  Esc close")
             color: dial.query ? dial.bone : dial.tint(dial.bone, 0.4)
-            font.family: dial.face
+            font.family: "Mistletoe Text"
             font.pixelSize: dial.query ? 15 : 11
             font.letterSpacing: dial.query ? 0.5 : 1
         }

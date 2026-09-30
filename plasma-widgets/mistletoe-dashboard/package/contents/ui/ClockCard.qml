@@ -38,7 +38,7 @@ Item {
             color: card.dash.gold
             style: Text.Raised
             styleColor: card.shade
-            font.family: "Exo 2"
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(14 * card.k)
             font.letterSpacing: 7 * card.k
             font.weight: Font.Medium
@@ -49,7 +49,7 @@ Item {
             color: card.dash.bone
             style: Text.Raised
             styleColor: card.shade
-            font.family: "Exo 2"
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(112 * card.k)
             font.weight: Font.ExtraLight
             font.features: { "tnum": 1 }
@@ -78,7 +78,7 @@ Item {
             color: card.dash.tint(card.dash.bone, 0.75)
             style: Text.Raised
             styleColor: card.shade
-            font.family: "Exo 2"
+            font.family: "Mistletoe Accent"
             font.pixelSize: Math.round(17 * card.k)
             font.weight: Font.Light
             font.letterSpacing: 1

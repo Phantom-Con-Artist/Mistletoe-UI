@@ -34,10 +34,15 @@ Item {
     property bool unlocked: false   // no-password sessions: show "Unlock"
     property string message: ""
 
+    // Show the prompt. Authentication starts only when it appears (as in
+    // Plasma's own lock screen): restarting it on every mouse move or key
+    // aborted PAM's conversation mid-password.
     function wake() {
-        active = true;
         idle.restart();
-        authenticator.startAuthenticating();
+        if (!active) {
+            active = true;
+            authenticator.startAuthenticating();
+        }
     }
 
     SessionManagement {
@@ -143,7 +148,7 @@ Item {
             color: ui.gold
             style: Text.Raised
             styleColor: Qt.rgba(0, 0, 0, 0.6)
-            font.family: "Ad Astra"
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(ui.height * 0.022)
             font.letterSpacing: Math.round(ui.height * 0.008)
         }
@@ -152,7 +157,7 @@ Item {
             color: ui.bone
             style: Text.Raised
             styleColor: Qt.rgba(0, 0, 0, 0.6)
-            font.family: "Ad Astra"
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(ui.height * 0.2)
         }
         Rectangle {
@@ -166,7 +171,7 @@ Item {
             color: ui.tint(ui.bone, 0.85)
             style: Text.Raised
             styleColor: Qt.rgba(0, 0, 0, 0.6)
-            font.family: "Mythril"
+            font.family: "Mistletoe Accent"
             font.pixelSize: Math.round(ui.height * 0.03)
         }
     }
@@ -204,7 +209,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: String(kscreenlocker_userName || "").toUpperCase()
                 color: ui.gold
-                font.family: "Ad Astra"
+                font.family: "Mistletoe Display"
                 font.pixelSize: 13
                 font.letterSpacing: 4
             }
@@ -231,7 +236,7 @@ Item {
                     color: ui.gold
                     selectionColor: ui.gold
                     selectedTextColor: ui.ink
-                    font.family: "Exo 2"
+                    font.family: "Mistletoe Display"
                     font.pixelSize: 16
                     font.letterSpacing: 6
                     focus: true
@@ -254,7 +259,7 @@ Item {
                         visible: !password.text
                         text: graceLock.running ? i18n("One moment…") : i18n("Password")
                         color: ui.tint(ui.bone, 0.45)
-                        font.family: "Mythril"
+                        font.family: "Mistletoe Accent"
                         font.pixelSize: 17
                     }
                 }
@@ -277,7 +282,7 @@ Item {
                     anchors.centerIn: parent
                     text: i18n("UNLOCK")
                     color: ui.ink
-                    font.family: "Ad Astra"
+                    font.family: "Mistletoe Display"
                     font.pixelSize: 15
                     font.letterSpacing: 4
                 }
@@ -290,7 +295,7 @@ Item {
                 wrapMode: Text.WordWrap
                 text: [capsLock.locked ? i18n("Caps Lock is on") : "", ui.message].filter(s => s).join("  ·  ")
                 color: ui.gold
-                font.family: "Exo 2"
+                font.family: "Mistletoe Text"
                 font.pixelSize: 13
             }
         }
@@ -346,7 +351,7 @@ Item {
                     anchors.bottom: parent.bottom
                     text: gemButton.modelData.label.toUpperCase()
                     color: gemButton.containsMouse ? ui.gold : ui.tint(ui.bone, 0.6)
-                    font.family: "Ad Astra"
+                    font.family: "Mistletoe Display"
                     font.pixelSize: 9
                     font.letterSpacing: 1.5
                 }

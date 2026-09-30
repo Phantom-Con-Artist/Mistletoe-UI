@@ -340,7 +340,7 @@ Item {
             horizontalAlignment: fan.sx < 0 ? Text.AlignRight : Text.AlignLeft
             text: Qt.formatDate(fan.now, "dddd").toUpperCase()
             color: fan.gold
-            font.family: "Exo 2"
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(10 * fan.unit)
             font.letterSpacing: 3
             font.weight: Font.Medium
@@ -350,7 +350,7 @@ Item {
             horizontalAlignment: fan.sx < 0 ? Text.AlignRight : Text.AlignLeft
             text: Qt.formatDate(fan.now, "d MMMM")
             color: fan.bone
-            font.family: "Exo 2"
+            font.family: "Mistletoe Accent"
             font.pixelSize: Math.round(28 * fan.unit)
             font.weight: Font.Light
         }
@@ -359,7 +359,7 @@ Item {
             horizontalAlignment: fan.sx < 0 ? Text.AlignRight : Text.AlignLeft
             text: fan.hint || (Qt.formatDate(fan.now, "yyyy") + "   ·   " + Qt.formatTime(fan.now, "hh:mm:ss"))
             color: fan.tint(fan.bone, 0.6)
-            font.family: "Exo 2"
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(12 * fan.unit)
         }
     }

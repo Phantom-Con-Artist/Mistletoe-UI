@@ -55,7 +55,7 @@ ColumnLayout {
         visible: favorites.count === 0
         text: i18n("Right-click an app in the launcher to pin it here")
         color: card.dash.tint(card.dash.bone, 0.5)
-        font.family: "Exo 2"
+        font.family: "Mistletoe Text"
         font.pixelSize: 11
     }
     Item {

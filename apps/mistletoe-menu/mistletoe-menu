@@ -14,6 +14,10 @@ org.kde.kappmenuview on the session bus, so `serve` holds that name.
                                            drives and network as JSON
   mistletoe-menu sync-wallpaper            give the active Mistletoe edition
                                            its wallpaper (see below)
+  mistletoe-menu fonts [ROLE=FAMILY ...]   set the font roles (display, accent,
+                                           text); no arguments re-applies
+  mistletoe-menu edition NAME              switch edition: dark, light, neon, ember
+  mistletoe-menu options                   editions and font choices as JSON
 
 The dial gets SERVICE and PATH for the active window from Plasma's task
 model and runs `dump` / `click` through Plasma's executable data source.
@@ -96,6 +100,7 @@ def click(service, path, ident):
 
 # ---- Places -------------------------------------------------------------
 DATA = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 
 
 def entry(label, icon, url, detail=""):
@@ -225,7 +230,18 @@ def current_wallpapers():
     return [line.split("=", 1)[1].strip() for line in text.splitlines() if line.startswith("Image=")]
 
 
+def ensure_gtk_layer():
+    """KDE rewrites gtk.css when the colours change; keep our import in it."""
+    for v in ("3.0", "4.0"):
+        css = CONFIG / f"gtk-{v}" / "gtk.css"
+        if (CONFIG / f"gtk-{v}" / "mistletoe.css").exists():
+            text = css.read_text() if css.exists() else ""
+            if "mistletoe.css" not in text:
+                css.write_text(text.rstrip("\n") + "\n@import 'mistletoe.css';\n")
+
+
 def sync_wallpaper():
+    ensure_gtk_layer()
     lnf = subprocess.run(["kreadconfig6", "--group", "KDE", "--key", "LookAndFeelPackage"],
                          capture_output=True, text=True).stdout.strip()
     images = current_wallpapers()
@@ -248,6 +264,94 @@ def sync_wallpaper():
                     (DATA / "wallpapers" / want).as_uri()], capture_output=True)
 
 
+# ---- Fonts and editions ------------------------------------------------------
+# Every Mistletoe surface names a font *role*, never a family. The roles are
+# fontconfig aliases, so changing one here changes it everywhere at once:
+# widgets, lock screen, and (through kdeglobals) the apps' UI font.
+ROLES = {
+    "display": ("Mistletoe Display", "Ad Astra", "Clocks, figures and small-caps headings"),
+    "accent": ("Mistletoe Accent", "Mythril", "Dates and large captions"),
+    "text": ("Mistletoe Text", "Exo 2", "Everyday text, and apps' UI font"),
+}
+FAMILIES = {
+    "Ad Astra": "Futuristic: faceted monoline",
+    "Mythril": "Whimsical: soft monoline with curls",
+    "Exo 2": "Geometric sans",
+}
+EDITIONS = {
+    "dark": ("Mistletoe Dark", "Obsidian and champagne gold"),
+    "light": ("Mistletoe Light", "Bone and bronze"),
+    "neon": ("Mistletoe Neon", "Violet-black and orchid, with the Neon wallpaper"),
+    "ember": ("Mistletoe Ember", "Charcoal and vermilion, with the Ember wallpaper"),
+}
+
+
+def kread(group, key, default=""):
+    out = subprocess.run(["kreadconfig6", "--file", "mistletoerc", "--group", group, "--key", key],
+                         capture_output=True, text=True).stdout.strip()
+    return out or default
+
+
+def chosen_fonts():
+    return {role: kread("Fonts", role, spec[1]) for role, spec in ROLES.items()}
+
+
+def write_fonts(choice):
+    rules = "\n".join(
+        f'  <alias binding="strong"><family>{ROLES[r][0]}</family>'
+        f'<prefer><family>{choice[r]}</family></prefer></alias>' for r in ROLES)
+    conf = CONFIG / "fontconfig" / "conf.d" / "60-mistletoe.conf"
+    conf.parent.mkdir(parents=True, exist_ok=True)
+    conf.write_text('<?xml version="1.0"?>\n<!DOCTYPE fontconfig SYSTEM "fonts.dtd">\n'
+                    "<!-- Mistletoe font roles; written by mistletoe-menu fonts. -->\n"
+                    f"<fontconfig>\n{rules}\n</fontconfig>\n")
+    subprocess.run(["fc-cache", "-f"], capture_output=True)
+
+
+def fonts(args):
+    choice = chosen_fonts()
+    for arg in args:
+        role, _, family = arg.partition("=")
+        if role in ROLES and family:
+            choice[role] = family
+            subprocess.run(["kwriteconfig6", "--file", "mistletoerc", "--group", "Fonts",
+                            "--key", role, family], capture_output=True)
+    write_fonts(choice)
+    # Running apps pick up the new font; the shell caches fonts, so restart it.
+    subprocess.run(["dbus-send", "--session", "--type=signal", "/KGlobalSettings",
+                    "org.kde.KGlobalSettings.notifyChange", "int32:1", "int32:0"], capture_output=True)
+    if args:
+        subprocess.Popen(["systemctl", "--user", "restart", "plasma-plasmashell"])
+    print(json.dumps(choice))
+
+
+def edition(name):
+    if name not in EDITIONS:
+        raise SystemExit(f"unknown edition {name}")
+    subprocess.run(["plasma-apply-lookandfeel", "--apply", f"org.mistletoe.{name}.desktop"], capture_output=True)
+    subprocess.run(["kwriteconfig6", "--file", "konsolerc", "--group", "Desktop Entry", "--key",
+                    "DefaultProfile", f"Mistletoe{name.capitalize()}.profile"], capture_output=True)
+    sync_wallpaper()
+
+
+def options():
+    lnf = subprocess.run(["kreadconfig6", "--group", "KDE", "--key", "LookAndFeelPackage"],
+                         capture_output=True, text=True).stdout.strip()
+    groups = [{
+        "name": "Edition", "icon": "preferences-desktop-theme-global",
+        "entries": [{"label": label, "detail": detail, "checked": lnf == f"org.mistletoe.{key}.desktop",
+                     "command": f"edition {key}"} for key, (label, detail) in EDITIONS.items()],
+    }]
+    choice = chosen_fonts()
+    for role, (alias, _, what) in ROLES.items():
+        groups.append({
+            "name": role.capitalize() + " font", "icon": "preferences-desktop-font",
+            "entries": [{"label": fam, "detail": f"{what}  ·  {desc}", "checked": choice[role] == fam,
+                         "command": f"fonts {role}='{fam}'"} for fam, desc in FAMILIES.items()],
+        })
+    print(json.dumps(groups))
+
+
 def serve():
     Gio.bus_own_name_on_connection(bus(), "org.kde.kappmenuview", Gio.BusNameOwnerFlags.NONE, None, None)
     GLib.MainLoop().run()
@@ -265,6 +369,12 @@ def main(argv):
             places()
         elif argv[:1] == ["sync-wallpaper"]:
             sync_wallpaper()
+        elif argv[:1] == ["fonts"]:
+            fonts(argv[1:])
+        elif argv[:1] == ["edition"] and len(argv) == 2:
+            edition(argv[1])
+        elif argv[:1] == ["options"]:
+            options()
         else:
             print(__doc__.strip(), file=sys.stderr)
             return 2

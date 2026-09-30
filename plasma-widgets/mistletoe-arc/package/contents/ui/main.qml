@@ -288,7 +288,7 @@ PlasmoidItem {
                 elide: Text.ElideRight
                 text: root.activeName
                 color: Kirigami.Theme.textColor
-                font.family: "Exo 2"
+                font.family: "Mistletoe Text"
                 font.pixelSize: 14
             }
 
@@ -305,7 +305,7 @@ PlasmoidItem {
                         anchors.baseline: valueText.baseline
                         text: modelData.key
                         color: Kirigami.Theme.focusColor
-                        font.family: "Exo 2"
+                        font.family: "Mistletoe Text"
                         font.pixelSize: 10
                         font.letterSpacing: 1.5
                         font.weight: Font.Medium
@@ -316,7 +316,7 @@ PlasmoidItem {
                         width: 50
                         text: modelData.value
                         color: Kirigami.Theme.textColor
-                        font.family: "Exo 2"
+                        font.family: "Mistletoe Text"
                         font.pixelSize: 13
                         font.features: { "tnum": 1 }
                     }

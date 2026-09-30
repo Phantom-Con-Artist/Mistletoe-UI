@@ -35,7 +35,6 @@ Item {
     readonly property color ink: Kirigami.Theme.backgroundColor
     readonly property color bone: Kirigami.Theme.textColor
     readonly property color gold: Kirigami.Theme.focusColor
-    readonly property string face: "Exo 2"
 
     function tint(c, a) {
         return Qt.rgba(c.r, c.g, c.b, a);
@@ -419,7 +418,7 @@ Item {
             text: (fan.query ? "Search" : fan.title).toUpperCase()
                 + (fan.pages > 1 && !fan.query ? "   ·   " + (fan.page + 1) + " / " + fan.pages : "")
             color: fan.gold
-            font.family: fan.face
+            font.family: "Mistletoe Display"
             font.pixelSize: Math.round(10 * fan.unit)
             font.letterSpacing: 3
             font.weight: Font.Medium
@@ -432,7 +431,7 @@ Item {
                 ? fan.query + (fan.count === 0 ? "  —  nothing found" : "")
                 : fan.hoverTitle || fan.title
             color: fan.bone
-            font.family: fan.face
+            font.family: "Mistletoe Accent"
             font.pixelSize: Math.round(26 * fan.unit)
             font.weight: Font.Light
         }
@@ -443,7 +442,7 @@ Item {
             text: fan.hoverSub
             visible: text.length > 0
             color: fan.tint(fan.bone, 0.6)
-            font.family: fan.face
+            font.family: "Mistletoe Text"
             font.pixelSize: Math.round(12 * fan.unit)
         }
     }

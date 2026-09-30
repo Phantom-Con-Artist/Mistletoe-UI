@@ -75,7 +75,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: i18n("MEDIA")
                 color: card.dash.gold
-                font.family: "Exo 2"
+                font.family: "Mistletoe Display"
                 font.pixelSize: 10
                 font.letterSpacing: 3
             }
@@ -83,7 +83,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: i18n("Open YouTube and Music")
                 color: card.dash.tint(card.dash.bone, 0.7)
-                font.family: "Exo 2"
+                font.family: "Mistletoe Text"
                 font.pixelSize: 13
             }
         }

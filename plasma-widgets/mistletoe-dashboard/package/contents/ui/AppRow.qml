@@ -47,7 +47,7 @@ MouseArea {
         anchors.verticalCenter: parent.verticalCenter
         text: (row.rank < 10 ? "0" : "") + row.rank
         color: row.gold
-        font.family: "Exo 2"
+        font.family: "Mistletoe Text"
         font.pixelSize: 10
         font.letterSpacing: 1
     }
@@ -68,7 +68,7 @@ MouseArea {
         anchors.verticalCenter: row.detail ? undefined : parent.verticalCenter
         text: row.value
         color: row.bone
-        font.family: "Exo 2"
+        font.family: "Mistletoe Text"
         font.pixelSize: 13
     }
     Text {
@@ -77,7 +77,7 @@ MouseArea {
         visible: row.detail.length > 0
         text: row.detail
         color: row.tint(row.bone, 0.5)
-        font.family: "Exo 2"
+        font.family: "Mistletoe Text"
         font.pixelSize: 10
     }
     Text {
@@ -91,7 +91,7 @@ MouseArea {
         text: row.title
         elide: Text.ElideRight
         color: row.containsMouse ? row.bone : row.tint(row.bone, 0.88)
-        font.family: "Exo 2"
+        font.family: "Mistletoe Text"
         font.pixelSize: 13
     }
     // CPU bar: slate track, gold fill.

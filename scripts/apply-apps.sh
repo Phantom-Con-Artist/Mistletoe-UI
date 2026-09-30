@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Give native KDE apps the calm Mistletoe look: Exo 2 as the UI font, icon-only
 # toolbars, no icons on buttons or in menus, no focus rings or toolbar
-# separators, Konsole with the Mistletoe profile and no menubar, and the
-# Mistletoe lock screen.
+# separators, Konsole with the Mistletoe profile and no menubar, the
+# Mistletoe lock screen, a sharp flat layer for GTK apps, and Firefox's
+# global menu (so its menus appear in the dial).
 #
 # These are app-wide settings a Global Theme can't carry, so they live here.
 # Every touched file is backed up first; `apply-apps.sh --revert` restores it.
@@ -14,6 +15,14 @@ VARIANT="${VARIANT:-Dark}"   # Dark or Light, for the Konsole profile
 
 if [[ "${1:-}" == "--revert" ]]; then
     [[ -d "$BACKUP" ]] || { echo "no backup at $BACKUP"; exit 1; }
+    # GTK layer and Firefox prefs.
+    for v in 3.0 4.0; do
+        rm -f "$CONF/gtk-$v/mistletoe.css"
+        sed -i "/@import 'mistletoe.css';/d" "$CONF/gtk-$v/gtk.css" 2>/dev/null || true
+    done
+    for prof in "$CONF"/mozilla/firefox/*.default* "$HOME"/.mozilla/firefox/*.default*; do
+        [[ -f "$prof/user.js" ]] && sed -i '/Mistletoe: global menu for the dial/,+2d' "$prof/user.js"
+    done
     for f in "${FILES[@]}"; do
         if [[ -e "$BACKUP/$f" ]]; then cp "$BACKUP/$f" "$CONF/$f"; else rm -f "$CONF/$f"; fi
     done
@@ -29,9 +38,11 @@ if [[ ! -d "$BACKUP" ]]; then
 fi
 
 w() { kwriteconfig6 --file "$1" --group "$2" --key "$3" "$4"; }
-font() { echo "Exo 2,$1,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"; }
+# The UI font is the Mistletoe *Text role* (a fontconfig alias, Exo 2 by
+# default), so changing the role in the dial restyles apps too.
+font() { echo "Mistletoe Text,$1,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"; }
 
-# Type: Exo 2 for the UI; terminals keep the system monospace.
+# Type: the Text role for the UI; terminals keep the system monospace.
 w kdeglobals General font "$(font 10)"
 w kdeglobals General menuFont "$(font 10)"
 w kdeglobals General toolBarFont "$(font 9)"
@@ -67,6 +78,27 @@ w konsolerc KonsoleWindow ShowMenuBarByDefault false
 w kscreenlockerrc Greeter Theme org.mistletoe.lockscreen
 kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General \
     --key Image "file://${XDG_DATA_HOME:-$HOME/.local/share}/wallpapers/Mistletoe"
+
+# GTK 3/4 apps: the sharp, flat Mistletoe layer over KDE's generated colours.
+for v in 3.0 4.0; do
+    dir="$CONF/gtk-$v"
+    mkdir -p "$dir"
+    ln -sfn "$(cd "$(dirname "$0")/.." && pwd)/gtk/mistletoe.css" "$dir/mistletoe.css"
+    if ! grep -qs "mistletoe.css" "$dir/gtk.css"; then
+        # KDE writes gtk.css without a trailing newline.
+        [[ -s "$dir/gtk.css" && -n "$(tail -c1 "$dir/gtk.css")" ]] && echo >> "$dir/gtk.css"
+        echo "@import 'mistletoe.css';" >> "$dir/gtk.css"
+    fi
+done
+
+# Firefox: its built-in global menu, so its menus appear in the dial.
+MARK="// Mistletoe: global menu for the dial"
+for prof in "$CONF"/mozilla/firefox/*.default* "$HOME"/.mozilla/firefox/*.default*; do
+    [[ -d "$prof" ]] || continue
+    grep -qsF "$MARK" "$prof/user.js" && continue
+    printf '%s\nuser_pref("widget.gtk.global-menu.enabled", true);\nuser_pref("widget.gtk.global-menu.wayland.enabled", true);\n' \
+        "$MARK" >> "$prof/user.js"
+done
 
 # Tell running apps to reload their style and fonts.
 dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:0 int32:0 || true

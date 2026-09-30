@@ -16,6 +16,7 @@
 */
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
@@ -72,13 +73,18 @@ PlasmoidItem {
     }
 
     function setPinned(on) {
+        // Float where the card sits (desktop coordinates are screen
+        // coordinates); KWin reads this from the window title.
+        const c0 = container();
+        if (on && c0) {
+            Plasmoid.configuration.floatX = Math.round(c0.x);
+            Plasmoid.configuration.floatY = Math.round(c0.y);
+        }
         if (on && Plasmoid.configuration.floatW <= 0) {
             // First float: same size as the card, near where it sits.
             const c = container();
             Plasmoid.configuration.floatW = Math.round(c ? c.width : root.card.w);
             Plasmoid.configuration.floatH = Math.round(c ? c.height : root.card.h);
-            Plasmoid.configuration.floatX = Math.round(c ? c.x + 24 : 120);
-            Plasmoid.configuration.floatY = Math.round(c ? c.y + 24 : 120);
         }
         Plasmoid.configuration.pinned = on;
     }
@@ -116,59 +122,85 @@ PlasmoidItem {
             floating: root.pinned
             onPinToggled: root.setPinned(!root.pinned)
 
-            // Floating: move/resize the window live from where the drag began.
-            property rect start
-            onWindowDragStarted: start = Qt.rect(floatWindow.x, floatWindow.y, floatHost.width, floatHost.height)
-            onWindowMoveTo: (dx, dy) => {
-                floatWindow.x = Math.round(start.x + dx);
-                floatWindow.y = Math.round(start.y + dy);
-            }
-            onWindowResizeTo: (dw, dh) => {
-                floatHost.width = Math.max(240, Math.round(start.width + dw));
-                floatHost.height = Math.max(64, Math.round(start.height + dh));
-            }
+            // Floating: the compositor moves and resizes the window.
+            onWindowMove: floatWindow.startSystemMove()
+            onWindowResize: floatWindow.startSystemResize(Qt.RightEdge | Qt.BottomEdge)
 
             onPlaced: (dx, dy, dw, dh) => {
                 if (root.pinned) {
-                    Plasmoid.configuration.floatX = floatWindow.x;
-                    Plasmoid.configuration.floatY = floatWindow.y;
-                    Plasmoid.configuration.floatW = Math.round(floatHost.width);
-                    Plasmoid.configuration.floatH = Math.round(floatHost.height);
                     return;
                 }
-                // Docked: commit once to the desktop layout, which snaps to its
-                // grid, keeps clear of other cards and saves.
+                // Docked: commit once to the desktop layout. Plasma animates any
+                // move of the container (ShortDropBehavior), so snap the target
+                // ourselves and let the card's visual offset track the animation
+                // (offset = target - current), keeping the card exactly where it
+                // was dropped while the container catches up underneath.
                 const c = root.container();
                 if (!c) {
                     return;
                 }
-                c.layout.releaseSpace(c);
-                c.x += dx;
-                c.y += dy;
-                c.width = Math.max(240, c.width + dw);
-                c.height = Math.max(Math.min(root.card.h, 64), c.height + dh);
-                c.layout.positionItem(c);
+                const grid = 16;
+                const snap = (v) => Math.round(v / grid) * grid;
+                const tx = snap(c.x + dx), ty = snap(c.y + dy);
+                const minH = Math.min(root.card.h, 64);
+                c.width = Math.max(240, snap(c.width + dw));
+                c.height = Math.max(minH, snap(c.height + dh));
+                if (dw === 0 && dh === 0) {
+                    cardItem.settle(c, tx, ty, dx, dy);
+                }
+                c.x = tx;
+                c.y = ty;
                 c.layout.save();
             }
         }
 
-        // Always above other windows; a notification-type window skips the
-        // task switcher and the arc. Only the media card takes keyboard focus
-        // (for its search field), so floating cards never steal your typing.
-        PlasmaCore.Dialog {
+        // Cards manage their own moves; Plasma's press-and-hold edit mode would
+        // start its own drag underneath ours. (Global Edit Mode still works.)
+        Component.onCompleted: Qt.callLater(() => {
+            const c = root.container();
+            if (c) {
+                c.editModeCondition = 1; // ItemContainer.Manual
+            }
+        })
+
+        // A floating card is a plain frameless window. KWin keeps it above
+        // other windows, off the task switcher and on every desktop (rule in
+        // kwin-scripts/mistletoe-edge, matched by the title) and places it
+        // at the "@x,y" in its title: where the card sat on the desktop.
+        // Moving and resizing are done by the compositor (startSystemMove /
+        // startSystemResize), so they are as smooth as any window.
+        Window {
             id: floatWindow
             visible: root.pinned
-            location: PlasmaCore.Types.Floating
-            type: PlasmaCore.Dialog.Notification
-            flags: Qt.WindowStaysOnTopHint | (root.card.typing ? 0 : Qt.WindowDoesNotAcceptFocus)
-            backgroundHints: PlasmaCore.Dialog.NoBackground
-            hideOnWindowDeactivate: false
-            x: Plasmoid.configuration.floatX
-            y: Plasmoid.configuration.floatY
-            mainItem: Item {
+            flags: Qt.FramelessWindowHint | (root.card.typing ? 0 : Qt.WindowDoesNotAcceptFocus)
+            color: "transparent"
+            // Only a position on screen is trusted; anything else (a stale or
+            // corrupt value) falls back to where the card sits, or top right.
+            readonly property point place: {
+                const x = Plasmoid.configuration.floatX, y = Plasmoid.configuration.floatY;
+                const sw = floatWindow.screen ? floatWindow.screen.width : 1920;
+                const sh = floatWindow.screen ? floatWindow.screen.height : 1080;
+                if (x >= 0 && y >= 0 && x + 80 <= sw && y + 60 <= sh) {
+                    return Qt.point(x, y);
+                }
+                const c = root.container();
+                if (c && c.x >= 0 && c.y >= 0 && c.x + 80 <= sw && c.y + 60 <= sh) {
+                    return Qt.point(Math.round(c.x), Math.round(c.y));
+                }
+                return Qt.point(Math.max(0, sw - width - 48), 48);
+            }
+            title: "Mistletoe Float " + Plasmoid.id + " @" + place.x + "," + place.y
+            width: Math.max(240, Plasmoid.configuration.floatW || root.card.w)
+            height: Math.max(64, Plasmoid.configuration.floatH || root.card.h)
+            minimumWidth: 240
+            minimumHeight: 64
+            // Remember the size the user gives it.
+            onWidthChanged: if (visible) Plasmoid.configuration.floatW = width
+            onHeightChanged: if (visible) Plasmoid.configuration.floatH = height
+
+            Item {
                 id: floatHost
-                width: Math.max(240, Plasmoid.configuration.floatW)
-                height: Math.max(64, Plasmoid.configuration.floatH)
+                anchors.fill: parent
             }
         }
     }

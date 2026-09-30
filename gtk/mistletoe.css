@@ -1,0 +1,54 @@
+/* Plasma Mistletoe for GTK 3 and 4: sharp, flat, compact.
+   Colours come from KDE's generated colors.css (the active Mistletoe
+   scheme); this only reshapes. Installed by scripts/apply-apps.sh and
+   imported from gtk.css. */
+
+/* Faceted, never soft: no rounded corners anywhere. */
+* {
+    border-radius: 0;
+    -gtk-icon-shadow: none;
+}
+
+/* Slim header bars (no big headers), hairline underneath. */
+headerbar, .titlebar {
+    min-height: 32px;
+    padding: 0 6px;
+    box-shadow: none;
+    background-image: none;
+    border-bottom: 1px solid alpha(currentColor, 0.08);
+}
+headerbar button, .titlebar button {
+    min-height: 22px;
+    min-width: 22px;
+    padding: 2px 6px;
+    margin: 4px 0;
+}
+
+/* Flat buttons with a 1px hairline instead of bevels. */
+button {
+    box-shadow: none;
+    background-image: none;
+    border: 1px solid alpha(currentColor, 0.12);
+}
+button:hover {
+    border-color: alpha(currentColor, 0.28);
+}
+button.flat, headerbar button.flat {
+    border-color: transparent;
+}
+
+/* Restrained shadows: windows, popovers and menus. */
+window.csd, window.csd decoration, .csd decoration {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.42), 0 0 0 1px alpha(currentColor, 0.08);
+}
+popover contents, popover > contents, menu, .menu, .context-menu {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    border: 1px solid alpha(currentColor, 0.1);
+}
+
+/* Thin, square scrollbars. */
+scrollbar slider {
+    min-width: 5px;
+    min-height: 5px;
+    border: none;
+}

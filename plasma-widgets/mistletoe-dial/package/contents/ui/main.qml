@@ -12,7 +12,9 @@
                 appmenu-gtk-module.
       Places    Dolphin's places and bookmarks, folders you used lately,
                 mounted drives, network and trash; opens Dolphin there.
-      Settings  every System Settings page, grouped as System Settings
+      Settings  first the Mistletoe choices (edition, and the display,
+                accent and text fonts; the current one is marked), then
+                every System Settings page, grouped as System Settings
                 groups them; each opens alone in its own window.
 
     Other widgets open the dial in a given mode by writing it to
@@ -184,6 +186,19 @@ PlasmoidItem {
         });
     }
 
+    // ---- Mistletoe options (top of Settings mode) --------------------------
+    // [{ name, icon, entries: [{ label, detail, checked, command }] }]
+    property var options: []
+    function loadOptions() {
+        run(bridge + " options", (out) => {
+            try {
+                options = JSON.parse(out);
+            } catch (e) {
+                options = [];
+            }
+        });
+    }
+
     // ---- Settings mode ----------------------------------------------------
     property var settings: ({ categories: [], modules: [] })
     property int settingsCategory: 0
@@ -222,7 +237,8 @@ PlasmoidItem {
     readonly property var categories: mode === "App"
         ? menu.map(m => ({ name: m.label, icon: menuIcons[m.label.toLowerCase()] || "application-menu" }))
         : mode === "Places" ? places.map(g => ({ name: g.name, icon: g.icon }))
-        : settings.categories.map(c => ({ name: c.name, icon: c.icon }))
+        : options.map(o => ({ name: o.name, icon: o.icon }))
+            .concat(settings.categories.map(c => ({ name: c.name, icon: c.icon })))
     readonly property int categoryIndex: mode === "App" ? appCategory
         : mode === "Places" ? placesCategory : settingsCategory
 
@@ -242,14 +258,25 @@ PlasmoidItem {
             return all.filter(e => !query || (e.label + " " + e.detail).toLowerCase().includes(query))
                 .map(e => ({ label: e.label, icon: e.icon, detail: e.detail, enabled: true, hasChildren: false, url: e.url }));
         }
+        const optionEntry = (o, e) => ({
+            label: e.label, icon: e.checked ? "checkmark" : "", detail: o.name + "  ·  " + e.detail,
+            enabled: true, checked: e.checked, hasChildren: false, command: e.command
+        });
+        if (!query && settingsCategory < options.length) {
+            const o = options[settingsCategory];
+            return o.entries.map(e => optionEntry(o, e));
+        }
         if (query) {
             const words = query.split(/\s+/);
-            return settings.modules.filter(m => {
+            const fromOptions = options.reduce((acc, o) => acc.concat(o.entries
+                .filter(e => words.every(w => (o.name + " " + e.label + " " + e.detail).toLowerCase().includes(w)))
+                .map(e => optionEntry(o, e))), []);
+            return fromOptions.concat(settings.modules.filter(m => {
                 const hay = (m.name + " " + m.description + " " + m.sub + " " + m.keywords).toLowerCase();
                 return words.every(w => hay.includes(w));
-            }).map(moduleEntry);
+            }).map(moduleEntry));
         }
-        const cat = settings.categories[settingsCategory];
+        const cat = settings.categories[settingsCategory - options.length];
         return cat ? settings.modules.filter(m => m.category === cat.id).map(moduleEntry) : [];
     }
 
@@ -291,6 +318,10 @@ PlasmoidItem {
         } else if (mode === "Places") {
             fan.close();
             run("dolphin " + q(e.url));
+        } else if (e.command) {
+            // A Mistletoe option: switch edition or font role.
+            fan.close();
+            run(bridge + " " + e.command);
         } else {
             fan.close();
             run("kcmshell6 " + q(e.module));
@@ -332,6 +363,7 @@ PlasmoidItem {
             settingsCategory = 0;
             loadMenu();
             loadPlaces();
+            loadOptions();
             if (settings.modules.length === 0) {
                 loadSettings();
             }

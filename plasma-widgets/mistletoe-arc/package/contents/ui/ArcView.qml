@@ -166,7 +166,7 @@ Item {
         color: arc.gold
         style: Text.Raised
         styleColor: Qt.rgba(0, 0, 0, 0.6)
-        font.family: "Exo 2"
+        font.family: "Mistletoe Display"
         font.pixelSize: 10
         font.letterSpacing: 1.5
         font.weight: Font.Medium
