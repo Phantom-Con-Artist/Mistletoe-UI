@@ -4,6 +4,7 @@
     arc slides, so the new one glides to the center and the rest step aside.
 */
 import QtQuick
+import QtQuick.Shapes
 import org.kde.kirigami as Kirigami
 
 Item {
@@ -45,8 +46,38 @@ Item {
                         topPad + iconCenter / 2 + radius * (1 - Math.cos(a)));
     }
 
-    // No plate: the icons and the gold orbit float straight over whatever
-    // is behind them; the name carries a 1px raised shadow for legibility.
+    // No plate: instead a soft dark glow that fades to nothing at the edges,
+    // so the icons and gold orbit read over bright wallpapers and busy
+    // windows alike without a visible shape behind them.
+    // Drawn as a circle, then squashed into an ellipse that fades to zero
+    // exactly at the popup's edges (so no rectangle ever shows).
+    Shape {
+        width: arc.width
+        height: arc.width
+        y: (arc.height - height) / 2
+        transform: Scale {
+            origin.x: arc.width / 2
+            origin.y: arc.width / 2
+            yScale: arc.height / arc.width
+        }
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            strokeColor: "transparent"
+            fillGradient: RadialGradient {
+                centerX: arc.width / 2; centerY: arc.width / 2
+                focalX: centerX; focalY: centerY
+                centerRadius: arc.width / 2
+                GradientStop { position: 0; color: Qt.rgba(arc.ink.r, arc.ink.g, arc.ink.b, 0.85) }
+                GradientStop { position: 0.6; color: Qt.rgba(arc.ink.r, arc.ink.g, arc.ink.b, 0.55) }
+                GradientStop { position: 1; color: Qt.rgba(arc.ink.r, arc.ink.g, arc.ink.b, 0) }
+            }
+            startX: 0; startY: 0
+            PathLine { x: arc.width; y: 0 }
+            PathLine { x: arc.width; y: arc.width }
+            PathLine { x: 0; y: arc.width }
+            PathLine { x: 0; y: 0 }
+        }
+    }
 
     WheelHandler {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
