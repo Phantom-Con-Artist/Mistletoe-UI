@@ -456,7 +456,12 @@ def punctuation(g, w, h, B, T, X, M, square_dot):
     g["greater"] = [P([(0, 500), (400, 280), (0, 60)])]
     g["asterisk"] = [L((150, T), (150, T - 260)), L((30, T - 60), (270, T - 200)), L((270, T - 60), (30, T - 200))]
     g["numbersign"] = [L((120, T - 40), (80, B)), L((320, T - 40), (280, B)), L((0, 470), (420, 470)), L((0, 230), (420, 230))]
-    g["percent"] = [L((0, B), (480, T)), dot(40, T - 60), dot(440, B + 60)]
+    # Rings, not dots, so the sign reads at text sizes: octagons for the
+    # faceted face, circles for the round one.
+    if square_dot:
+        g["percent"] = [L((20, B), (500, T)), octagon(0, T - 190, 170, T, 50), octagon(350, B, 520, B + 190, 50)]
+    else:
+        g["percent"] = [L((20, B), (500, T)), A(85, T - 95, 85, 95, 0, 360), A(435, B + 95, 85, 95, 0, 360)]
     g["ampersand"] = [P([(460, B), (80, 420), (80, T - 60), (140, T), (300, T), (360, T - 60), (360, 520), (0, 260),
                          (0, B + 60), (60, B), (300, B), (460, 280)])]
     g["at"] = [octagon(0, -40, 660, T, 120), octagon(180, 140, 420, 420, 60), L((420, 420), (420, 160)),

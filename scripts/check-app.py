@@ -22,14 +22,23 @@ APPDIRS = [Path.home() / ".local/share/applications", Path("/usr/share/applicati
 
 
 def find_desktop(app):
+    """Exact id first; then a desktop file whose id ends with the name
+    (org.kde.dolphin for "dolphin"); then one whose Exec runs that command.
+    Never a mere substring match (which picked claude-code for "code")."""
     for d in APPDIRS:
         for name in (app, app + ".desktop"):
             if (d / name).is_file():
                 return d / name
-    for d in APPDIRS:
-        for f in d.glob("*.desktop"):
-            if app.lower() in f.stem.lower():
-                return f
+    files = [f for d in APPDIRS if d.is_dir() for f in sorted(d.glob("*.desktop"))]
+    for f in files:
+        if f.stem.lower().endswith("." + app.lower()):
+            return f
+    # Prefer the visible launcher over helpers such as URL handlers.
+    hidden = lambda f: "NoDisplay=true" in f.read_text(errors="ignore")
+    for f in sorted(files, key=hidden):
+        cmd = exec_line(f).replace('"', "").split()
+        if cmd and os.path.basename(cmd[0]) == app:
+            return f
     return None
 
 
@@ -41,7 +50,9 @@ def exec_line(desktop):
 
 
 def resolve_binary(cmd):
-    parts = [p for p in cmd.split() if not p.startswith("%") and "=" not in p.split("/")[-1]]
+    parts = [p.strip('"') for p in cmd.split() if not p.startswith("%") and "=" not in p.split("/")[-1]]
+    if parts and parts[0] == "env":
+        parts = parts[1:]
     if not parts:
         return None
     path = shutil.which(parts[0]) or parts[0]
@@ -69,9 +80,16 @@ def toolkit(binary, cmd):
     except Exception:
         libs = ""
     folder = os.path.dirname(binary or "")
-    if "libxul" in libs or os.path.exists(os.path.join(folder, "libxul.so")):
+    name = os.path.basename(binary or "")
+    # Firefox and Thunderbird start from a shell wrapper around libxul.
+    if "libxul" in libs or os.path.exists(os.path.join(folder, "libxul.so")) or \
+            any(os.path.exists(f"/usr/lib64/{n}/libxul.so") for n in (name,)):
         return "firefox"
-    if os.path.exists(os.path.join(folder, "resources", "app.asar")) or "electron" in (binary or ""):
+    # Electron/Chromium apps ship Chromium's resource packs beside the binary
+    # (they also link GTK, so check this before GTK).
+    if any(os.path.exists(os.path.join(folder, p)) for p in ("chrome_100_percent.pak", "resources.pak",
+                                                              "resources/app.asar")) \
+            or "electron" in (binary or ""):
         return "electron"
     if "libQt6Core" in libs:
         return "kde" if "libKF6" in libs else "qt6"
@@ -134,6 +152,9 @@ def main():
     desktop = find_desktop(app)
     cmd = exec_line(desktop) if desktop else app
     binary = resolve_binary(cmd)
+    if not desktop and not shutil.which(app):
+        print(f"{app}: not installed (no .desktop file or command by that name)")
+        return 1
     kit = toolkit(binary, cmd)
     print(f"{app}: {desktop.name if desktop else 'no .desktop file'}  ·  {binary}  ·  toolkit: {kit}")
     for (level, note), what in zip(REPORT[kit], ("colours", "fonts", "window frame", "dial menus")):

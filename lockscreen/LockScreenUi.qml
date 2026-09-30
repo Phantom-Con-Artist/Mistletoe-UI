@@ -139,7 +139,28 @@ Item {
         onTriggered: ui.now = new Date()
     }
 
+    // Soft glows (no plate, no blur) so the clock and the prompt read over
+    // bright wallpapers.
+    Glow {
+        x: clockColumn.x - clockColumn.width * 0.35
+        y: clockColumn.y - clockColumn.height * 0.3
+        width: clockColumn.width * 1.7
+        height: clockColumn.height * 1.6
+        color: ui.ink
+        strength: 0.55
+    }
+    Glow {
+        x: prompt.x - prompt.width * 0.4
+        y: prompt.y - 60
+        width: prompt.width * 1.8
+        height: prompt.height + 120
+        color: ui.ink
+        strength: 0.9
+        opacity: prompt.opacity
+    }
+
     Column {
+        id: clockColumn
         x: Math.round(ui.width * 0.07)
         y: Math.round(ui.height * 0.3)
         spacing: 0
@@ -210,7 +231,7 @@ Item {
                 text: String(kscreenlocker_userName || "").toUpperCase()
                 color: ui.gold
                 font.family: "Mistletoe Display"
-                font.pixelSize: 13
+                font.pixelSize: 14
                 font.letterSpacing: 4
             }
 
