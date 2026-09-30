@@ -35,6 +35,8 @@ for sh in "$ROOT"/shells/*/; do
     dest="$DATA/plasma/shells/$(basename "$sh")"
     rm -rf "$dest"; mkdir -p "$(dirname "$dest")"; cp -r "${sh%/}" "$dest"
     echo "copied $dest"
+    # The locker loads [Greeter] Theme as a Look-and-Feel package.
+    link "$dest" "$DATA/plasma/look-and-feel/$(basename "$sh")"
 done
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
