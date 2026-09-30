@@ -1,5 +1,5 @@
 {
-    "KPackageStructure": "Plasma/Shell",
+    "KPackageStructure": "Plasma/LookAndFeel",
     "X-Plasma-APIVersion": "2",
     "X-KDE-ParentApp": "org.kde.plasmashell",
     "KPlugin": {
