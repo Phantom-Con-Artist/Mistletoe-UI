@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Description": "Plasma Mistletoe (Dark): a minimalist, cinematic matte-and-translucent Plasma style",
+        "Id": "mistletoe-dark",
+        "License": "LGPL",
+        "Name": "Mistletoe Dark",
+        "Version": "0.2.0"
+    },
+    "X-Plasma-API": "5.0"
+}
