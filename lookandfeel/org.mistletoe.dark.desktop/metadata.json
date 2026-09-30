@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "",
+        "Description": "Plasma Mistletoe (dark): a minimal, cinematic desktop with no taskbar, radial corner fans, a matte strip and a dashboard desktop",
+        "Id": "org.mistletoe.dark.desktop",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Dark",
+        "Version": "0.3.0"
+    }
+}
