@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Give native KDE apps the calm Mistletoe look: Exo 2 as the UI font, icon-only
 # toolbars, no icons on buttons or in menus, no focus rings or toolbar
-# separators, and Konsole with the Mistletoe profile and no menubar.
+# separators, Konsole with the Mistletoe profile and no menubar, and the
+# Mistletoe lock screen.
 #
 # These are app-wide settings a Global Theme can't carry, so they live here.
 # Every touched file is backed up first; `apply-apps.sh --revert` restores it.
 set -euo pipefail
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}"
 BACKUP="$CONF/mistletoe-apps.backup"
-FILES=(kdeglobals breezerc konsolerc)
+FILES=(kdeglobals breezerc konsolerc kscreenlockerrc)
 VARIANT="${VARIANT:-Dark}"   # Dark or Light, for the Konsole profile
 
 if [[ "${1:-}" == "--revert" ]]; then
@@ -60,6 +61,12 @@ w breezerc Style WindowDragMode WD_FULL
 # Konsole: the Mistletoe profile, no menubar.
 w konsolerc "Desktop Entry" DefaultProfile "Mistletoe$VARIANT.profile"
 w konsolerc KonsoleWindow ShowMenuBarByDefault false
+
+# Lock screen: the Mistletoe greeter, over the Mistletoe wallpaper (the
+# dial's wallpaper sync keeps it matching the desktop afterwards).
+w kscreenlockerrc Greeter Theme org.mistletoe.lockscreen
+kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General \
+    --key Image "file://${XDG_DATA_HOME:-$HOME/.local/share}/wallpapers/Mistletoe"
 
 # Tell running apps to reload their style and fonts.
 dbus-send --session --type=signal /KGlobalSettings org.kde.KGlobalSettings.notifyChange int32:0 int32:0 || true

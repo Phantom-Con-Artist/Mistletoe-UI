@@ -29,6 +29,9 @@ done
 for k in "$ROOT"/konsole/*; do
     link "$k" "$DATA/konsole/$(basename "$k")"
 done
+for sh in "$ROOT"/shells/*/; do
+    link "${sh%/}" "$DATA/plasma/shells/$(basename "$sh")"
+done
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
 done

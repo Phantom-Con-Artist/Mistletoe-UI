@@ -238,11 +238,14 @@ def sync_wallpaper():
     elif lnf.startswith("org.mistletoe.") and names & SPECIAL:
         want = "Mistletoe"
     else:
-        return
-    if names == {want}:
-        return
-    subprocess.run(["plasma-apply-wallpaperimage", str(DATA / "wallpapers" / want)], capture_output=True)
-    print("wallpaper ->", want)
+        want = next(iter(names)) if len(names) == 1 else "Mistletoe"
+    if names != {want}:
+        subprocess.run(["plasma-apply-wallpaperimage", str(DATA / "wallpapers" / want)], capture_output=True)
+        print("wallpaper ->", want)
+    # The lock screen shows the same wallpaper as the desktop.
+    subprocess.run(["kwriteconfig6", "--file", "kscreenlockerrc", "--group", "Greeter", "--group", "Wallpaper",
+                    "--group", "org.kde.image", "--group", "General", "--key", "Image",
+                    (DATA / "wallpapers" / want).as_uri()], capture_output=True)
 
 
 def serve():

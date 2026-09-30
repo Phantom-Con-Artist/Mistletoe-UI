@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/Shell",
+    "X-Plasma-APIVersion": "2",
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Id": "org.mistletoe.lockscreen",
+        "Name": "Mistletoe Lock Screen",
+        "License": "GPL-2.0-or-later",
+        "Description": "The Plasma Mistletoe lock screen",
+        "Version": "0.1.0"
+    }
+}

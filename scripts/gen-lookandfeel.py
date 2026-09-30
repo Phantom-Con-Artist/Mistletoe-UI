@@ -166,6 +166,28 @@ def metadata(variant, cfg):
     }
 
 
+def lock_screen():
+    """kscreenlocker loads its UI from a Plasma *shell* package (kscreenlockerrc
+    [Greeter] Theme), not from the Global Theme, so the Mistletoe lock screen
+    ships as its own small shell package. Its colours follow the active
+    scheme, so one package serves every edition."""
+    shell = ROOT / "shells" / "org.mistletoe.lockscreen"
+    lock = shell / "contents" / "lockscreen"
+    lock.mkdir(parents=True, exist_ok=True)
+    for src in sorted((ROOT / "lockscreen").glob("*.qml")) + [ROOT / "plasma-widgets" / "shared" / "Shard.qml"]:
+        (lock / src.name).write_text(src.read_text())
+    (shell / "metadata.json").write_text(json.dumps({
+        "KPackageStructure": "Plasma/Shell",
+        # kscreenlocker rejects shell packages without API version 2 as "outdated".
+        "X-Plasma-APIVersion": "2",
+        "X-KDE-ParentApp": "org.kde.plasmashell",
+        "KPlugin": {"Authors": [{"Name": "Subhradeep Sarkar"}], "Id": "org.mistletoe.lockscreen",
+                    "Name": "Mistletoe Lock Screen", "License": "GPL-2.0-or-later",
+                    "Description": "The Plasma Mistletoe lock screen", "Version": "0.1.0"},
+    }, indent=4) + "\n")
+    print("wrote", shell)
+
+
 def main():
     for variant, cfg in VARIANTS.items():
         base = OUT / f"org.mistletoe.{variant}.desktop"
@@ -177,8 +199,10 @@ def main():
             scheme=cfg["scheme"], icons=cfg["icons"], variant=variant, wallpaper=cfg["wallpaper"],
             font10=FONT.format(size=10), font9=FONT.format(size=9), font8=FONT.format(size=8)))
         (contents / "layouts" / "org.kde.plasma.desktop-layout.js").write_text(LAYOUT.replace("%WALLPAPER%", cfg["wallpaper"]))
+
         print("wrote", base)
 
 
 if __name__ == "__main__":
     main()
+    lock_screen()
