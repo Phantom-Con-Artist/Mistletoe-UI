@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "Windows and Tasks",
+        "Description": "Open apps on a semicircle with the active app always in the center",
+        "Icon": "preferences-system-windows",
+        "Id": "org.mistletoe.arc",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Arc",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

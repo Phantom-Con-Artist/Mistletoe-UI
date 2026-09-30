@@ -26,6 +26,7 @@ Item {
     signal itemAltActivated(int index, string favoriteId)
     signal railActivated(int index)
     signal backRequested()
+    signal escapePressed()
     signal closed()
 
     // ---- Palette --------------------------------------------------------
@@ -48,17 +49,17 @@ Item {
     readonly property int sy: origin.y > height / 2 ? -1 : 1
     readonly property real thetaMin: 6
     readonly property real thetaMax: 84
-    readonly property real unit: Math.max(0.6, Math.min(1.25, (Math.min(width, height) - 120) / 720))
+    readonly property real unit: Math.max(0.6, Math.min(1, (Math.min(width, height) - 120) / 860))
     readonly property int rings: 5
-    readonly property real r0: 150 * unit
-    readonly property real step: 86 * unit
-    readonly property real cell: 58 * unit
-    readonly property real railRadius: ringRadius(rings - 1) + 104 * unit
+    readonly property real r0: 118 * unit
+    readonly property real step: 66 * unit
+    readonly property real cell: 44 * unit
+    readonly property real railRadius: ringRadius(rings - 1) + 80 * unit
     readonly property var capacities: {
         const caps = [];
         for (let k = 0; k < rings; ++k) {
             const arc = ringRadius(k) * (thetaMax - thetaMin) * Math.PI / 180;
-            caps.push(Math.max(1, Math.floor(arc / (78 * unit))));
+            caps.push(Math.max(1, Math.floor(arc / (58 * unit))));
         }
         return caps;
     }
@@ -243,7 +244,7 @@ Item {
             fillGradient: RadialGradient {
                 centerX: fan.origin.x; centerY: fan.origin.y
                 focalX: fan.origin.x; focalY: fan.origin.y
-                centerRadius: fan.railRadius + 300 * fan.unit
+                centerRadius: fan.railRadius + 240 * fan.unit
                 GradientStop { position: 0; color: fan.tint(fan.ink, 0.94) }
                 GradientStop { position: 0.5; color: fan.tint(fan.ink, 0.84) }
                 GradientStop { position: 0.75; color: fan.tint(fan.ink, 0.45) }
@@ -359,7 +360,7 @@ Item {
             readonly property point at: fan.point(fan.railRadius, theta)
             readonly property bool active: fan.railIndex === index && !fan.query
 
-            width: Math.round(36 * fan.unit)
+            width: Math.round(28 * fan.unit)
             height: width
             x: at.x - width / 2
             y: at.y - height / 2
@@ -402,7 +403,7 @@ Item {
     // ---- Core -----------------------------------------------------------
     // Sits over the launcher button; the button "turns" into this gem.
     Gem {
-        width: Math.round(30 * fan.unit)
+        width: Math.round(22 * fan.unit)
         height: width
         x: fan.origin.x - width / 2
         y: fan.origin.y - height / 2
@@ -419,10 +420,10 @@ Item {
 
     // ---- Caption --------------------------------------------------------
     Column {
-        readonly property real gap: 56 * fan.unit
+        readonly property real gap: 44 * fan.unit
         x: fan.sx > 0 ? fan.origin.x + fan.railRadius + gap : fan.origin.x - fan.railRadius - gap - width
         y: fan.sy < 0 ? fan.origin.y + 10 - height : fan.origin.y - 10
-        width: Math.min(560 * fan.unit, fan.width / 2)
+        width: Math.min(420 * fan.unit, fan.width / 2)
         opacity: fan.veil
         spacing: 2
 
@@ -433,7 +434,7 @@ Item {
                 + (fan.pages > 1 && !fan.query ? "   ·   " + (fan.page + 1) + " / " + fan.pages : "")
             color: fan.gold
             font.family: fan.face
-            font.pixelSize: Math.round(11 * fan.unit)
+            font.pixelSize: Math.round(10 * fan.unit)
             font.letterSpacing: 3
             font.weight: Font.Medium
         }
@@ -446,7 +447,7 @@ Item {
                 : fan.hoverTitle || fan.title
             color: fan.bone
             font.family: fan.face
-            font.pixelSize: Math.round(36 * fan.unit)
+            font.pixelSize: Math.round(26 * fan.unit)
             font.weight: Font.Light
         }
         Text {
@@ -457,7 +458,7 @@ Item {
             visible: text.length > 0
             color: fan.tint(fan.bone, 0.6)
             font.family: fan.face
-            font.pixelSize: Math.round(14 * fan.unit)
+            font.pixelSize: Math.round(12 * fan.unit)
         }
     }
 
@@ -493,6 +494,9 @@ Item {
             case Qt.Key_Return:
             case Qt.Key_Enter:
                 fan.activate(fan.current >= 0 ? fan.current : fan.page * fan.pageSize);
+                break;
+            case Qt.Key_Escape:
+                fan.escapePressed();
                 break;
             case Qt.Key_Backspace:
                 if (text.length > 0) {

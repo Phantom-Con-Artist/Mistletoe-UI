@@ -16,7 +16,6 @@ import org.kde.plasma.networkmanagement as PlasmaNM
 import org.kde.plasma.private.volume
 import org.kde.plasma.private.mpris as Mpris
 import org.kde.plasma.private.sessions as Sessions
-import org.kde.plasma.private.kicker as Kicker
 
 PlasmoidItem {
     id: root
@@ -33,6 +32,12 @@ PlasmoidItem {
         id: cornerButton
         time: root.now
         open: overlay.visible
+        indicators: [
+            { icon: root.netIcon, label: root.netOn ? root.netValue : i18n("Offline"), on: root.netOn },
+            { icon: root.btOn ? "network-bluetooth-activated-symbolic" : "network-bluetooth-inactive-symbolic",
+              label: root.btOn ? (root.bt.connectedDevices.length > 0 ? root.bt.connectedDevices[0].name : i18n("On")) : i18n("Off"),
+              on: root.btOn }
+        ]
         onClicked: root.toggle()
         Component.onCompleted: root.button = cornerButton
     }
@@ -172,7 +177,7 @@ PlasmoidItem {
             fan.close();
             return;
         }
-        overlay.toggle();
+        overlay.open();
         Qt.callLater(() => {
             if (button) {
                 fan.origin = button.centerOnScreen();
@@ -188,15 +193,14 @@ PlasmoidItem {
         }
     }
 
-    Kicker.DashboardWindow {
+    Overlay {
         id: overlay
 
-        backgroundColor: "transparent"
-        visualParent: root.button
-        keyEventProxy: fan
-        onKeyEscapePressed: fan.close()
+        anchorItem: root.button
+        focusItem: fan
+        onDeactivated: fan.close()
 
-        mainItem: StatusFan {
+        StatusFan {
             id: fan
             anchors.fill: parent
             now: root.now
@@ -204,11 +208,7 @@ PlasmoidItem {
             onTileClicked: (id) => root.act(id)
             onTileAltClicked: (id) => root.actAlt(id)
             onTileWheel: (id, direction) => root.wheel(id, direction)
-            onClosed: {
-                if (overlay.visible) {
-                    overlay.toggle();
-                }
-            }
+            onClosed: overlay.hide()
         }
     }
 }

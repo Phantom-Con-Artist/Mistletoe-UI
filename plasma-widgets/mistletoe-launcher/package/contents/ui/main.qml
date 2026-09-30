@@ -76,7 +76,7 @@ PlasmoidItem {
             return;
         }
         selectRail(0);
-        overlay.toggle();
+        overlay.open();
         Qt.callLater(openFan);
     }
 
@@ -166,24 +166,14 @@ PlasmoidItem {
         query: fan.query
     }
 
-    Kicker.DashboardWindow {
+    Overlay {
         id: overlay
 
-        backgroundColor: "transparent"
-        visualParent: kicker.button
-        keyEventProxy: fan.keyTarget
+        anchorItem: kicker.button
+        focusItem: fan.keyTarget
+        onDeactivated: fan.close()
 
-        onKeyEscapePressed: {
-            if (fan.query.length > 0) {
-                fan.keyTarget.text = "";
-            } else if (kicker.stack.length > 0) {
-                kicker.stack = kicker.stack.slice(0, -1);
-            } else {
-                fan.close();
-            }
-        }
-
-        mainItem: RadialFan {
+        RadialFan {
             id: fan
 
             anchors.fill: parent
@@ -200,11 +190,16 @@ PlasmoidItem {
                     kicker.stack = kicker.stack.slice(0, -1);
                 }
             }
-            onClosed: {
-                if (overlay.visible) {
-                    overlay.toggle();
+            onEscapePressed: {
+                if (fan.query.length > 0) {
+                    fan.keyTarget.text = "";
+                } else if (kicker.stack.length > 0) {
+                    kicker.stack = kicker.stack.slice(0, -1);
+                } else {
+                    fan.close();
                 }
             }
+            onClosed: overlay.hide()
         }
     }
 }

@@ -14,6 +14,8 @@ MouseArea {
 
     property date time: new Date()
     property bool open: false
+    // Always-visible indicators: [{ icon, label, on }]
+    property var indicators: []
 
     Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
@@ -75,6 +77,37 @@ MouseArea {
                 font.family: "Exo 2"
                 font.pixelSize: Math.round(button.side * 0.2)
                 font.letterSpacing: 1
+            }
+        }
+
+        Repeater {
+            model: button.horizontal ? button.indicators.length : 0
+            Row {
+                id: chip
+                required property int index
+                readonly property var info: button.indicators[index] || ({})
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Math.round(button.side * 0.12)
+                Kirigami.Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.round(button.side * 0.36)
+                    height: width
+                    source: chip.info.icon || ""
+                    isMask: true
+                    color: chip.info.on ? Kirigami.Theme.focusColor
+                        : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.4)
+                    animated: false
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.min(implicitWidth, button.side * 2.6)
+                    text: chip.info.label || ""
+                    elide: Text.ElideRight
+                    color: chip.info.on ? Kirigami.Theme.textColor
+                        : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.45)
+                    font.family: "Exo 2"
+                    font.pixelSize: Math.round(button.side * 0.27)
+                }
             }
         }
     }

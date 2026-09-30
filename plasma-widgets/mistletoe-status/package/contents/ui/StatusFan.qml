@@ -39,13 +39,13 @@ Item {
     // ---- Geometry (same conventions as the launcher fan) -----------------
     readonly property int sx: origin.x < width / 2 ? 1 : -1
     readonly property int sy: origin.y > height / 2 ? -1 : 1
-    readonly property real unit: Math.max(0.6, Math.min(1.25, (Math.min(width, height) - 120) / 720))
-    readonly property real dialSize: 272 * unit
-    readonly property real dialRadius: 236 * unit          // distance of the dial's center
-    readonly property var orbits: [470 * unit, 640 * unit]
+    readonly property real unit: Math.max(0.6, Math.min(1, (Math.min(width, height) - 120) / 860))
+    readonly property real dialSize: 188 * unit
+    readonly property real dialRadius: 165 * unit          // distance of the dial's center
+    readonly property var orbits: [330 * unit, 480 * unit]
     // Tile angles per orbit, staggered between the orbits so wide tiles
-    // near the edges never share a row (checked against 196x66 tiles).
-    readonly property var orbitAngles: [[78, 50, 22], [66, 38, 8]]
+    // near the edges never share a row (checked against 150x48 tiles).
+    readonly property var orbitAngles: [[78, 50, 22], [70, 40, 8]]
 
     function point(r, theta) {
         const a = theta * Math.PI / 180;
@@ -164,7 +164,7 @@ Item {
             fillGradient: RadialGradient {
                 centerX: fan.origin.x; centerY: fan.origin.y
                 focalX: fan.origin.x; focalY: fan.origin.y
-                centerRadius: fan.orbits[1] + 340 * fan.unit
+                centerRadius: fan.orbits[1] + 240 * fan.unit
                 GradientStop { position: 0; color: fan.tint(fan.ink, 0.94) }
                 GradientStop { position: 0.5; color: fan.tint(fan.ink, 0.84) }
                 GradientStop { position: 0.75; color: fan.tint(fan.ink, 0.45) }
@@ -268,7 +268,7 @@ Item {
 
     // ---- Core -----------------------------------------------------------
     Gem {
-        width: Math.round(30 * fan.unit)
+        width: Math.round(22 * fan.unit)
         height: width
         x: fan.origin.x - width / 2
         y: fan.origin.y - height / 2
@@ -285,10 +285,12 @@ Item {
 
     // ---- Caption: the date ----------------------------------------------
     Column {
-        readonly property real gap: 70 * fan.unit
-        x: fan.sx < 0 ? fan.origin.x - fan.orbits[1] - gap - width : fan.origin.x + fan.orbits[1] + gap
+        // Clear the outermost tile (not just its orbit) so the date never
+        // runs under it: the lowest tile sits at theta 8 on the outer orbit.
+        readonly property real reach: fan.orbits[1] * Math.cos(8 * Math.PI / 180) + 75 * fan.unit + 36 * fan.unit
+        x: fan.sx < 0 ? fan.origin.x - reach - width : fan.origin.x + reach
         y: fan.sy < 0 ? fan.origin.y + 10 - height : fan.origin.y - 10
-        width: Math.min(520 * fan.unit, fan.width / 2)
+        width: Math.min(360 * fan.unit, fan.width / 3)
         opacity: fan.veil
         spacing: 2
 
@@ -298,7 +300,7 @@ Item {
             text: Qt.formatDate(fan.now, "dddd").toUpperCase()
             color: fan.gold
             font.family: "Exo 2"
-            font.pixelSize: Math.round(11 * fan.unit)
+            font.pixelSize: Math.round(10 * fan.unit)
             font.letterSpacing: 3
             font.weight: Font.Medium
         }
@@ -308,7 +310,7 @@ Item {
             text: Qt.formatDate(fan.now, "d MMMM")
             color: fan.bone
             font.family: "Exo 2"
-            font.pixelSize: Math.round(40 * fan.unit)
+            font.pixelSize: Math.round(28 * fan.unit)
             font.weight: Font.Light
         }
         Text {
@@ -317,7 +319,7 @@ Item {
             text: fan.hint || (Qt.formatDate(fan.now, "yyyy") + "   ·   " + Qt.formatTime(fan.now, "hh:mm:ss"))
             color: fan.tint(fan.bone, 0.6)
             font.family: "Exo 2"
-            font.pixelSize: Math.round(14 * fan.unit)
+            font.pixelSize: Math.round(12 * fan.unit)
         }
     }
 }

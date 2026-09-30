@@ -23,8 +23,8 @@ MouseArea {
         return Qt.rgba(c.r, c.g, c.b, a);
     }
 
-    width: Math.round(196 * unit)
-    height: Math.round(66 * unit)
+    width: Math.round(150 * unit)
+    height: Math.round(48 * unit)
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     onWheel: (wheel) => tile.wheelStep(wheel.angleDelta.y > 0 ? 1 : -1)
@@ -38,16 +38,16 @@ MouseArea {
 
         Shard {
             anchors.fill: parent
-            cut: Math.round(12 * tile.unit)
+            cut: Math.round(9 * tile.unit)
             fill: tile.tint(tile.ink, tile.containsMouse ? 0.96 : 0.84)
             rim: tile.containsMouse ? tile.gold : tile.tint(tile.bone, 0.16)
         }
 
         Gem {
             id: gem
-            width: Math.round(38 * tile.unit)
+            width: Math.round(28 * tile.unit)
             height: width
-            x: Math.round(14 * tile.unit)
+            x: Math.round(10 * tile.unit)
             anchors.verticalCenter: parent.verticalCenter
             fill: tile.on ? tile.gold : "transparent"
             rim: tile.on ? tile.gold : tile.tint(tile.bone, 0.4)
@@ -67,9 +67,9 @@ MouseArea {
 
         Column {
             anchors.left: gem.right
-            anchors.leftMargin: Math.round(12 * tile.unit)
+            anchors.leftMargin: Math.round(9 * tile.unit)
             anchors.right: parent.right
-            anchors.rightMargin: Math.round(14 * tile.unit)
+            anchors.rightMargin: Math.round(10 * tile.unit)
             anchors.verticalCenter: parent.verticalCenter
             spacing: 1
             Text {
@@ -77,7 +77,7 @@ MouseArea {
                 text: tile.label.toUpperCase()
                 color: tile.gold
                 font.family: "Exo 2"
-                font.pixelSize: Math.round(10 * tile.unit)
+                font.pixelSize: Math.round(9 * tile.unit)
                 font.letterSpacing: 2
                 font.weight: Font.Medium
                 elide: Text.ElideRight
@@ -87,7 +87,7 @@ MouseArea {
                 text: tile.value
                 color: tile.bone
                 font.family: "Exo 2"
-                font.pixelSize: Math.round(15 * tile.unit)
+                font.pixelSize: Math.round(12 * tile.unit)
                 elide: Text.ElideRight
             }
         }

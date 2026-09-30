@@ -15,11 +15,14 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # name -> geometry / look. r = chamfer size, m = content margin,
 # s = shadow extent, a = fill opacity per transparency mode.
+# Surfaces are matte, not glass: blur is off (see plasmarc), so fills stay
+# nearly opaque. The panel is invisible: Mistletoe has no taskbar, so its
+# panels only carry floating widgets that draw their own plates.
 FRAMES = {
-    "dialogs/background":       dict(r=14, m=12, s=36, a=dict(base=.74, translucent=.74, opaque=.96, solid=1.0)),
-    "widgets/background":       dict(r=12, m=10, s=28, a=dict(base=.70, translucent=.70, opaque=.96, solid=1.0)),
-    "widgets/panel-background": dict(r=10, m=6,  s=28, a=dict(base=.66, translucent=.66, opaque=.96, solid=1.0)),
-    "widgets/tooltip":          dict(r=8,  m=8,  s=20, a=dict(base=.88, translucent=.88, opaque=.98, solid=1.0)),
+    "dialogs/background":       dict(r=12, m=10, s=30, a=dict(base=.96, translucent=.96, opaque=.98, solid=1.0)),
+    "widgets/background":       dict(r=10, m=8,  s=24, a=dict(base=.94, translucent=.94, opaque=.97, solid=1.0)),
+    "widgets/panel-background": dict(r=4,  m=2,  s=4,  a=dict(base=0, translucent=0, opaque=0, solid=0), invisible=True),
+    "widgets/tooltip":          dict(r=8,  m=7,  s=18, a=dict(base=.97, translucent=.97, opaque=.98, solid=1.0)),
 }
 MODES = {"base": "", "translucent": "translucent/", "opaque": "opaque/", "solid": "solid/"}
 SHADOW = {"dark": .60, "light": .22}
@@ -54,7 +57,7 @@ def corner_paths(c):
     }
 
 
-def frame_slices(c, opacity):
+def frame_slices(c, opacity, rims=True):
     """Return {name: (w, h, svg_body)} for the 9 slices at local origin.
 
     Rims are filled 1px shapes, never strokes: strokes inflate the element
@@ -62,8 +65,8 @@ def frame_slices(c, opacity):
     get a faint bone hairline; the diagonal cuts get the gold accent.
     """
     fill = f'class="ColorScheme-Background" style="fill:currentColor;opacity:{opacity}"'
-    rim = f'class="ColorScheme-Text" style="fill:currentColor;opacity:{HAIR_OPACITY}"'
-    gold = f'class="ColorScheme-ButtonFocus" style="fill:currentColor;opacity:{GOLD_OPACITY}"'
+    rim = f'class="ColorScheme-Text" style="fill:currentColor;opacity:{HAIR_OPACITY if rims else 0}"'
+    gold = f'class="ColorScheme-ButtonFocus" style="fill:currentColor;opacity:{GOLD_OPACITY if rims else 0}"'
     e = EDGE
     q = c - 1
     cp = corner_paths(c)
@@ -141,7 +144,7 @@ def build(cfg, opacity, shadow_alpha, uid):
             x += w + pad
             rowh = max(rowh, h)
 
-    place("", frame_slices(r, opacity))
+    place("", frame_slices(r, opacity, rims=not cfg.get("invisible")))
     place("mask-", mask_slices(r))
     sdefs, sl = shadow_slices(s, shadow_alpha, uid)
     place("shadow-", sl)
@@ -178,7 +181,8 @@ def main():
                 out = base / f"{sub}{name}.svg"
                 out.parent.mkdir(parents=True, exist_ok=True)
                 uid = name.replace("/", "-") + mode[:2]
-                out.write_text(build(cfg, cfg["a"][mode], salpha, uid))
+                shadow = 0 if cfg.get("invisible") else salpha
+                out.write_text(build(cfg, cfg["a"][mode], shadow, uid))
         print("wrote", base)
 
 
