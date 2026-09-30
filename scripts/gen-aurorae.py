@@ -35,7 +35,7 @@ BUTTON = 26                     # button hit box
 EDGE = 32                       # stretchable strip length in the SVG
 REF_EDGE = 240                  # edge length of the shadow reference render
 SCALE = 2                       # shadow raster scale (HiDPI)
-SHADOW = {"dark": (.62, .30), "light": (.26, .14)}  # (ambient, contact) alpha
+SHADOW = {"dark": (.62, .30), "light": (.26, .14), "neon": (.62, .30), "ember": (.62, .30)}  # (ambient, contact) alpha
 
 
 def hexc(rgb, a=None):
@@ -49,7 +49,7 @@ def colors(variant):
         fg=p["fg"], fg_inactive=p["fg_inactive"], gold=p["accent"],
         gold_hover=p["hover"], negative=p["negative"],
         # glyphs on a gold/coral fill: darkest surface for contrast
-        ink=gen_colors.PALETTES["Dark"]["view"][0],
+        ink=(gen_colors.PALETTES["Dark"] if variant == "light" else p)["view"][0],
     )
 
 
@@ -272,7 +272,7 @@ PaddingRight={PAD_S}
 
 
 def main():
-    for variant in ("dark", "light"):
+    for variant in ("dark", "light", "neon", "ember"):
         c = colors(variant)
         name = f"mistletoe-{variant}"
         out = ROOT / "window-decorations" / "aurorae" / name

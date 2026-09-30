@@ -26,7 +26,7 @@ FRAMES = {
     "widgets/tooltip":          dict(r=8,  m=7,  s=18, a=dict(base=.97, translucent=.97, opaque=.98, solid=1.0)),
 }
 MODES = {"base": "", "translucent": "translucent/", "opaque": "opaque/", "solid": "solid/"}
-SHADOW = {"dark": .60, "light": .22}
+SHADOW = {"dark": .60, "light": .22, "neon": .60, "ember": .60}
 EDGE = 32          # length of the stretchable edge/center strips
 HAIR_OPACITY = .10  # 1px bone rim on straight edges (scheme text color)
 GOLD_OPACITY = .85  # 1px gold thread on the diagonal cuts (scheme focus color)
@@ -184,6 +184,15 @@ def main():
                 uid = name.replace("/", "-") + mode[:2]
                 shadow = 0 if cfg.get("invisible") else salpha * cfg.get("shadow", 1)
                 out.write_text(build(cfg, cfg["a"][mode], shadow, uid))
+        # Neon/Ember reuse Dark's metadata and plasmarc, renamed.
+        if variant in ("neon", "ember"):
+            import json
+            meta = json.loads((ROOT / "themes" / "mistletoe-dark" / "metadata.json").read_text())
+            name = variant.capitalize()
+            meta["KPlugin"].update(Id=f"mistletoe-{variant}", Name=f"Mistletoe {name}",
+                                   Description=f"Plasma Mistletoe ({name}): the dark style in the {name} wallpaper's palette")
+            (base / "metadata.json").write_text(json.dumps(meta, indent=4) + "\n")
+            (base / "plasmarc").write_text((ROOT / "themes" / "mistletoe-dark" / "plasmarc").read_text())
         print("wrote", base)
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Plasma Mistletoe color schemes (dark + light) from one palette.
+"""Generate the Plasma Mistletoe color schemes (dark, light, neon, ember) from one palette table.
 
 Writes:
   color-schemes/MistletoeDark.colors    color-schemes/MistletoeLight.colors
@@ -68,6 +68,65 @@ PALETTES = {
         selection_link=(222, 185, 139),
         title_active=(222, 217, 204),
         title_inactive=(230, 225, 212),
+    ),
+    # Neon: violet-black ground and orchid accent, sampled from the Neon
+    # wallpaper (ground ~23,14,33; accents ~164,85,166 / 203,143,199).
+    "Neon": dict(
+        window=((22, 15, 32), (30, 20, 43)),
+        view=((13, 9, 20), (19, 13, 28)),
+        button=((40, 26, 56), (55, 36, 76)),
+        header=((17, 11, 25), (24, 16, 35)),
+        header_inactive=((13, 9, 20), (19, 13, 28)),
+        tooltip=((30, 20, 43), (40, 26, 56)),
+        complementary=((13, 9, 20), (22, 15, 32)),
+        complementary_fg=(236, 226, 240),
+        complementary_fg_inactive=(158, 142, 168),
+        fg=(236, 226, 240),
+        fg_inactive=(158, 142, 168),
+        link=(214, 160, 222),
+        visited=(150, 170, 220),
+        negative=(240, 98, 120),
+        neutral=(240, 150, 90),
+        positive=(130, 210, 170),
+        accent=(196, 110, 200),         # orchid: focus rings, threads
+        hover=(224, 160, 226),
+        selection=(196, 110, 200),
+        selection_alt=(160, 80, 166),
+        selection_fg=(13, 9, 20),
+        selection_fg_inactive=(50, 30, 55),
+        selection_link=(40, 26, 56),
+        title_active=(17, 11, 25),
+        title_inactive=(13, 9, 20),
+    ),
+    # Ember: warm charcoal ground and vermilion accent, sampled from the
+    # Ember wallpaper (ground ~36,25,24; accent ~188,87,61; highlight
+    # ~242,211,176). Errors lean pink so they never read as the accent.
+    "Ember": dict(
+        window=((28, 20, 19), (38, 27, 25)),
+        view=((17, 12, 11), (24, 17, 16)),
+        button=((48, 34, 31), (64, 45, 41)),
+        header=((22, 16, 15), (30, 22, 20)),
+        header_inactive=((17, 12, 11), (24, 17, 16)),
+        tooltip=((38, 27, 25), (48, 34, 31)),
+        complementary=((17, 12, 11), (28, 20, 19)),
+        complementary_fg=(242, 226, 210),
+        complementary_fg_inactive=(165, 146, 134),
+        fg=(242, 226, 210),
+        fg_inactive=(165, 146, 134),
+        link=(240, 170, 130),
+        visited=(190, 170, 200),
+        negative=(238, 84, 120),
+        neutral=(240, 170, 80),
+        positive=(150, 200, 140),
+        accent=(222, 106, 72),          # vermilion: focus rings, threads
+        hover=(242, 150, 112),
+        selection=(222, 106, 72),
+        selection_alt=(188, 87, 61),
+        selection_fg=(17, 12, 11),
+        selection_fg_inactive=(60, 30, 25),
+        selection_link=(48, 34, 31),
+        title_active=(22, 16, 15),
+        title_inactive=(17, 12, 11),
     ),
 }
 

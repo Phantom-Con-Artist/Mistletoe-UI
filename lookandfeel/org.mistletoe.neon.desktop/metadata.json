@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "",
+        "Description": "Plasma Mistletoe (neon): a minimal, cinematic desktop with no taskbar, radial corner fans, a matte strip and a dashboard desktop",
+        "Id": "org.mistletoe.neon.desktop",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Neon",
+        "Version": "0.3.0"
+    }
+}

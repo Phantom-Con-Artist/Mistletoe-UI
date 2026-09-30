@@ -1,0 +1,30 @@
+[kdeglobals][General]
+ColorScheme=MistletoeNeon
+font=Exo 2,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+menuFont=Exo 2,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+toolBarFont=Exo 2,9,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+smallestReadableFont=Exo 2,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+
+[kdeglobals][WM]
+activeFont=Exo 2,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+
+[kdeglobals][KDE]
+widgetStyle=Breeze
+
+[kdeglobals][Icons]
+Theme=breeze-dark
+
+[plasmarc][Theme]
+name=mistletoe-neon
+
+[kcminputrc][Mouse]
+cursorTheme=breeze_cursors
+
+[kwinrc][org.kde.kdecoration2]
+library=org.kde.kwin.aurorae
+theme=__aurorae__svg__mistletoe-neon
+BorderSize=None
+BorderSizeAuto=false
+
+[Wallpaper]
+Image=Mistletoe-Neon

@@ -14,7 +14,7 @@ Item {
 
     required property var dash
 
-    readonly property color shade: Qt.rgba(0, 0, 0, 0.35)
+    readonly property color shade: Qt.rgba(0, 0, 0, 0.6)
     // Everything scales with the card: 112px time at the default 352px.
     readonly property real k: Math.max(0.45, Math.min(1.8, Math.min(width / 352, height / 224)))
 

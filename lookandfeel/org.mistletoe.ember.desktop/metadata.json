@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "",
+        "Description": "Plasma Mistletoe (ember): a minimal, cinematic desktop with no taskbar, radial corner fans, a matte strip and a dashboard desktop",
+        "Id": "org.mistletoe.ember.desktop",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Ember",
+        "Version": "0.3.0"
+    }
+}

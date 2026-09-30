@@ -196,9 +196,16 @@ PlasmoidItem {
             }
         });
     }
+    // A Global Theme switch changes the colour scheme; when it does, give a
+    // Mistletoe edition its own wallpaper (Plasma won't replace one you've
+    // set). See `mistletoe-menu sync-wallpaper`.
+    readonly property color schemeAccent: Kirigami.Theme.focusColor
+    onSchemeAccentChanged: run(bridge + " sync-wallpaper")
+
     Component.onCompleted: {
         loadSettings();
         register();
+        run(bridge + " sync-wallpaper");
     }
 
     function moduleEntry(m) {

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generate the Plasma Mistletoe Global Themes (Look-and-Feel packages).
 
-Two packages, org.mistletoe.dark.desktop and org.mistletoe.light.desktop,
-share one layout script and differ only in their defaults. Applying one
+Four packages share one layout script and differ in their defaults: Dark
+and Light, plus the Neon and Ember editions whose palettes come from
+their own wallpapers. Applying one
 sets colors, Plasma style, window decoration, icons, cursor, Exo 2 fonts
 and the wallpaper; with "Desktop and window layout" ticked it also builds
 the Mistletoe desktop: one matte strip along the bottom (launcher, arc,
@@ -23,8 +24,11 @@ OUT = ROOT / "lookandfeel"
 FONT = "Exo 2,{size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
 VARIANTS = {
-    "dark": dict(name="Mistletoe Dark", scheme="MistletoeDark", icons="breeze-dark"),
-    "light": dict(name="Mistletoe Light", scheme="MistletoeLight", icons="breeze"),
+    "dark": dict(name="Mistletoe Dark", scheme="MistletoeDark", icons="breeze-dark", wallpaper="Mistletoe"),
+    "light": dict(name="Mistletoe Light", scheme="MistletoeLight", icons="breeze", wallpaper="Mistletoe"),
+    # Special editions: the palette sampled from their own wallpaper.
+    "neon": dict(name="Mistletoe Neon", scheme="MistletoeNeon", icons="breeze-dark", wallpaper="Mistletoe-Neon"),
+    "ember": dict(name="Mistletoe Ember", scheme="MistletoeEmber", icons="breeze-dark", wallpaper="Mistletoe-Ember"),
 }
 
 DEFAULTS = """[kdeglobals][General]
@@ -56,7 +60,7 @@ BorderSize=None
 BorderSizeAuto=false
 
 [Wallpaper]
-Image=Mistletoe
+Image={wallpaper}
 """
 
 # Plasma runs this with its desktop scripting API when the theme is applied
@@ -97,7 +101,7 @@ function addDashboard(desktop, geo) {
 for (const desktop of desktopsForActivity(currentActivity())) {
     desktop.wallpaperPlugin = "org.kde.image";
     desktop.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];
-    desktop.writeConfig("Image", "file://" + userDataPath("data", "wallpapers/Mistletoe"));
+    desktop.writeConfig("Image", "file://" + userDataPath("data", "wallpapers/%WALLPAPER%"));
     desktop.writeConfig("FillMode", 2); // scaled and cropped
 
     if (desktop.screen === 0) {
@@ -170,9 +174,9 @@ def main():
         (contents / "previews").mkdir(parents=True, exist_ok=True)
         (base / "metadata.json").write_text(json.dumps(metadata(variant, cfg), indent=4) + "\n")
         (contents / "defaults").write_text(DEFAULTS.format(
-            scheme=cfg["scheme"], icons=cfg["icons"], variant=variant,
+            scheme=cfg["scheme"], icons=cfg["icons"], variant=variant, wallpaper=cfg["wallpaper"],
             font10=FONT.format(size=10), font9=FONT.format(size=9), font8=FONT.format(size=8)))
-        (contents / "layouts" / "org.kde.plasma.desktop-layout.js").write_text(LAYOUT)
+        (contents / "layouts" / "org.kde.plasma.desktop-layout.js").write_text(LAYOUT.replace("%WALLPAPER%", cfg["wallpaper"]))
         print("wrote", base)
 
 

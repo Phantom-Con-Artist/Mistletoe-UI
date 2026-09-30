@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Description": "Plasma Mistletoe (Ember): slim shard-cut window decoration",
+        "Id": "mistletoe-ember",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Ember",
+        "Version": "0.1.0"
+    }
+}
