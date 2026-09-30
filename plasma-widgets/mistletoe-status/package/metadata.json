@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "Date and Time",
+        "Description": "Analog clock that blooms into radial status widgets: Bluetooth, network, volume, media",
+        "Icon": "preferences-system-time",
+        "Id": "org.mistletoe.status",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Status",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

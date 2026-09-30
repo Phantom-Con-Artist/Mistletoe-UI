@@ -1,0 +1,210 @@
+/*
+    Mistletoe Status: a corner clock that opens a fullscreen, transparent
+    overlay where a large analog dial and status tiles bloom radially.
+
+    Tiles: Bluetooth, network, volume, media, lock screen, settings.
+    Left-click acts, right-click opens the matching settings page, and the
+    wheel adjusts the volume.
+*/
+import QtQuick
+import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
+import org.kde.kirigami as Kirigami
+import org.kde.kcmutils as KCMUtils
+import org.kde.bluezqt as BluezQt
+import org.kde.plasma.networkmanagement as PlasmaNM
+import org.kde.plasma.private.volume
+import org.kde.plasma.private.mpris as Mpris
+import org.kde.plasma.private.sessions as Sessions
+import org.kde.plasma.private.kicker as Kicker
+
+PlasmoidItem {
+    id: root
+
+    property Item button: null
+    property date now: new Date()
+
+    preferredRepresentation: compactRepresentation
+    compactRepresentation: ClockButton {
+        time: root.now
+        open: overlay.visible
+        onClicked: root.toggle()
+        Component.onCompleted: root.button = this
+    }
+    fullRepresentation: null
+    activationTogglesExpanded: false
+    toolTipMainText: Qt.formatDate(now, Qt.locale().dateFormat(Locale.LongFormat))
+    toolTipSubText: Qt.formatTime(now, Qt.locale().timeFormat(Locale.ShortFormat))
+
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.now = new Date()
+    }
+
+    // ---- Bluetooth ------------------------------------------------------
+    readonly property var bt: BluezQt.Manager
+    readonly property bool btOn: bt.operational && bt.bluetoothOperational && !bt.bluetoothBlocked
+    readonly property string btValue: {
+        if (!bt.operational || bt.adapters.length === 0) {
+            return i18n("Unavailable");
+        }
+        if (!btOn) {
+            return i18n("Off");
+        }
+        const n = bt.connectedDevices.length;
+        return n === 0 ? i18n("On") : bt.connectedDevices[0].name + (n > 1 ? "  +" + (n - 1) : "");
+    }
+
+    function toggleBluetooth() {
+        const enable = !btOn;
+        bt.bluetoothBlocked = !enable;
+        for (let i = 0; i < bt.adapters.length; ++i) {
+            bt.adapters[i].powered = enable;
+        }
+    }
+
+    // ---- Network --------------------------------------------------------
+    PlasmaNM.NetworkStatus {
+        id: network
+    }
+    // activeConnections reads like "Wi-Fi: Connected to Home\nWired: ...".
+    readonly property string netLine: (network.activeConnections || "").split("\n")[0]
+    readonly property bool netOn: netLine.indexOf(":") > 0
+    readonly property string netValue: netOn
+        ? netLine.substring(netLine.indexOf(":") + 1).trim().replace(/^Connected to /, "")
+        : i18n("Disconnected")
+    readonly property string netIcon: !netOn ? "network-offline-symbolic"
+        : /wi-?fi|wireless/i.test(netLine) ? "network-wireless-symbolic" : "network-wired-symbolic"
+
+    // ---- Volume ---------------------------------------------------------
+    readonly property var sink: PreferredDevice.sink
+    readonly property int volumePercent: sink ? Math.round(sink.volume / PulseAudio.NormalVolume * 100) : 0
+    readonly property string volumeIcon: !sink || sink.muted || volumePercent === 0 ? "audio-volume-muted-symbolic"
+        : volumePercent < 34 ? "audio-volume-low-symbolic"
+        : volumePercent < 67 ? "audio-volume-medium-symbolic" : "audio-volume-high-symbolic"
+
+    function stepVolume(direction) {
+        if (!sink) {
+            return;
+        }
+        const stepSize = PulseAudio.NormalVolume * 0.05;
+        sink.volume = Math.max(PulseAudio.MinimalVolume,
+                               Math.min(PulseAudio.NormalVolume * 1.5, sink.volume + direction * stepSize));
+        if (direction > 0 && sink.muted) {
+            sink.muted = false;
+        }
+    }
+
+    // ---- Media ----------------------------------------------------------
+    Mpris.Mpris2Model {
+        id: mpris
+    }
+    readonly property var player: mpris.currentPlayer
+    readonly property bool playing: !!player && player.playbackStatus === Mpris.PlaybackStatus.Playing
+    readonly property string mediaValue: !player ? i18n("Nothing playing")
+        : [player.artist, player.track].filter(s => s && s.length > 0).join(" — ") || player.identity
+
+    // ---- Session --------------------------------------------------------
+    Sessions.SessionManagement {
+        id: session
+    }
+
+    readonly property var tiles: [
+        { id: "bluetooth", icon: btOn ? "network-bluetooth-activated-symbolic" : "network-bluetooth-inactive-symbolic",
+          label: i18n("Bluetooth"), value: btValue, on: btOn,
+          hint: i18n("Click to toggle  ·  right-click for devices") },
+        { id: "network", icon: netIcon, label: i18n("Network"), value: netValue, on: netOn,
+          hint: i18n("Click for network settings") },
+        { id: "volume", icon: volumeIcon, label: i18n("Volume"),
+          value: sink ? (sink.muted ? i18n("Muted") : volumePercent + "%") : i18n("No output"),
+          on: !!sink && !sink.muted,
+          hint: i18n("Scroll to adjust  ·  click to mute") },
+        { id: "media", icon: playing ? "media-playback-pause-symbolic" : "media-playback-start-symbolic",
+          label: player ? player.identity : i18n("Media"), value: mediaValue, on: playing,
+          hint: player ? i18n("Click to play or pause  ·  scroll to skip  ·  right-click to show") : "" },
+        { id: "lock", icon: "system-lock-screen-symbolic", label: i18n("Session"), value: i18n("Lock screen"),
+          on: false, hint: i18n("Click to lock  ·  right-click for power options") },
+        { id: "settings", icon: "configure-symbolic", label: i18n("System"), value: i18n("Settings"),
+          on: false, hint: i18n("Open System Settings") }
+    ]
+
+    function act(id) {
+        switch (id) {
+        case "bluetooth": toggleBluetooth(); return;
+        case "network": KCMUtils.KCMLauncher.openSystemSettings("kcm_networkmanagement"); break;
+        case "volume": if (sink) sink.muted = !sink.muted; return;
+        case "media": if (player) player.PlayPause(); return;
+        case "lock": session.lock(); break;
+        case "settings": KCMUtils.KCMLauncher.openSystemSettings(""); break;
+        }
+        fan.close();
+    }
+
+    function actAlt(id) {
+        switch (id) {
+        case "bluetooth": KCMUtils.KCMLauncher.openSystemSettings("kcm_bluetooth"); break;
+        case "network": KCMUtils.KCMLauncher.openSystemSettings("kcm_networkmanagement"); break;
+        case "volume": KCMUtils.KCMLauncher.openSystemSettings("kcm_pulseaudio"); break;
+        case "media": if (player) player.Raise(); break;
+        case "lock": session.requestLogoutPrompt(); break;
+        default: return;
+        }
+        fan.close();
+    }
+
+    function wheel(id, direction) {
+        if (id === "volume") {
+            stepVolume(direction);
+        } else if (id === "media" && player) {
+            direction > 0 ? player.Previous() : player.Next();
+        }
+    }
+
+    function toggle() {
+        if (overlay.visible) {
+            fan.close();
+            return;
+        }
+        overlay.toggle();
+        Qt.callLater(() => {
+            if (button) {
+                fan.origin = button.centerOnScreen();
+            }
+            fan.open();
+        });
+    }
+
+    Connections {
+        target: Plasmoid
+        function onActivated() {
+            root.toggle();
+        }
+    }
+
+    Kicker.DashboardWindow {
+        id: overlay
+
+        backgroundColor: "transparent"
+        visualParent: root.button
+        keyEventProxy: fan
+        onKeyEscapePressed: fan.close()
+
+        mainItem: StatusFan {
+            id: fan
+            anchors.fill: parent
+            now: root.now
+            tiles: root.tiles
+            onTileClicked: (id) => root.act(id)
+            onTileAltClicked: (id) => root.actAlt(id)
+            onTileWheel: (id, direction) => root.wheel(id, direction)
+            onClosed: {
+                if (overlay.visible) {
+                    overlay.toggle();
+                }
+            }
+        }
+    }
+}
