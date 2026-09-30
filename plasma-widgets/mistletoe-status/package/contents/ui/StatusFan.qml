@@ -230,7 +230,7 @@ Item {
         StatusTile {
             id: tileItem
             required property int index
-            readonly property var data: fan.tiles[index] || ({})
+            readonly property var info: fan.tiles[index] || ({})
             readonly property var slot: fan.slot(index)
             readonly property real t: slot ? fan.local(slot.delay) : 0
             readonly property real e: fan.outBack(t)
@@ -248,21 +248,21 @@ Item {
             ink: fan.ink
             bone: fan.bone
             gold: fan.gold
-            icon: data.icon || ""
-            label: data.label || ""
-            value: data.value || ""
-            on: !!data.on
+            icon: info.icon || ""
+            label: info.label || ""
+            value: info.value || ""
+            on: !!info.on
 
-            onEntered: fan.hint = data.hint || ""
+            onEntered: fan.hint = info.hint || ""
             onExited: fan.hint = ""
             onClicked: (mouse) => {
                 if (mouse.button === Qt.RightButton) {
-                    fan.tileAltClicked(data.id);
+                    fan.tileAltClicked(info.id);
                 } else {
-                    fan.tileClicked(data.id);
+                    fan.tileClicked(info.id);
                 }
             }
-            onWheelStep: (direction) => fan.tileWheel(data.id, direction)
+            onWheelStep: (direction) => fan.tileWheel(info.id, direction)
         }
     }
 

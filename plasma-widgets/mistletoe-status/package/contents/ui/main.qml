@@ -24,14 +24,18 @@ PlasmoidItem {
     property Item button: null
     property date now: new Date()
 
-    preferredRepresentation: compactRepresentation
-    compactRepresentation: ClockButton {
+    // The button is the *full* representation, shown inline: with a null
+    // full representation Plasma never instantiates a compact one. This
+    // is the same arrangement Plasma's Application Dashboard uses.
+    preferredRepresentation: fullRepresentation
+    compactRepresentation: null
+    fullRepresentation: ClockButton {
+        id: cornerButton
         time: root.now
         open: overlay.visible
         onClicked: root.toggle()
-        Component.onCompleted: root.button = this
+        Component.onCompleted: root.button = cornerButton
     }
-    fullRepresentation: null
     activationTogglesExpanded: false
     toolTipMainText: Qt.formatDate(now, Qt.locale().dateFormat(Locale.LongFormat))
     toolTipSubText: Qt.formatTime(now, Qt.locale().timeFormat(Locale.ShortFormat))

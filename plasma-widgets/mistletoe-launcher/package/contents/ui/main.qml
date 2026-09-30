@@ -28,13 +28,17 @@ PlasmoidItem {
         ? (runnerModel.count > 0 ? runnerModel.modelForRow(0) : null)
         : (stack.length > 0 ? stack[stack.length - 1] : baseModel)
 
-    preferredRepresentation: compactRepresentation
-    compactRepresentation: CompactButton {
+    // The button is the *full* representation, shown inline: with a null
+    // full representation Plasma never instantiates a compact one. This
+    // is the same arrangement Plasma's Application Dashboard uses.
+    preferredRepresentation: fullRepresentation
+    compactRepresentation: null
+    fullRepresentation: CompactButton {
+        id: cornerButton
         open: overlay.visible
         onClicked: kicker.toggle()
-        Component.onCompleted: kicker.button = this
+        Component.onCompleted: kicker.button = cornerButton
     }
-    fullRepresentation: null
     activationTogglesExpanded: false
 
     // Rail slot 0 is Favorites; the rest map onto rootModel rows.
