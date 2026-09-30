@@ -37,6 +37,11 @@ w kdeglobals General toolBarFont "$(font 9)"
 w kdeglobals General smallestReadableFont "$(font 8)"
 w kdeglobals WM activeFont "$(font 10)"
 
+# Offer Mistletoe as the light/dark pair in Quick Settings (and for the
+# "Automatic" day/night switch) instead of Breeze.
+w kdeglobals KDE DefaultLightLookAndFeel org.mistletoe.light.desktop
+w kdeglobals KDE DefaultDarkLookAndFeel org.mistletoe.dark.desktop
+
 # Fewer things competing for attention.
 w kdeglobals "Toolbar style" ToolButtonStyle NoText
 w kdeglobals "Toolbar style" ToolButtonStyleOtherToolbars NoText
