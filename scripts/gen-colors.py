@@ -14,53 +14,60 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Colors are (r, g, b). Each surface is (normal, alternate).
 PALETTES = {
+    # Obsidian, bone and champagne gold, sampled from the MyTheme.png reference.
     "Dark": dict(
-        window=((22, 26, 32), (29, 34, 42)),
-        view=((14, 17, 21), (19, 23, 28)),
-        button=((35, 41, 50), (43, 50, 61)),
-        header=((18, 21, 26), (24, 28, 34)),
-        header_inactive=((14, 17, 21), (18, 21, 26)),
-        tooltip=((30, 36, 44), (38, 45, 55)),
-        complementary=((17, 20, 25), (24, 28, 34)),
-        fg=(233, 238, 243),
-        fg_inactive=(140, 152, 165),
-        link=(96, 220, 214),
-        visited=(166, 148, 255),
-        negative=(255, 107, 122),
-        neutral=(255, 180, 84),
-        positive=(92, 220, 150),
-        accent=(79, 216, 208),          # decoration focus / rings / glow
-        hover=(150, 236, 230),
-        selection=(24, 116, 122),       # matte selection fill (white text)
-        selection_alt=(20, 96, 102),
-        selection_fg=(255, 255, 255),
-        selection_link=(255, 224, 150),
-        title_active=(20, 24, 30),
-        title_inactive=(16, 19, 24),
+        window=((17, 19, 22), (25, 29, 33)),
+        view=((8, 9, 11), (14, 16, 19)),
+        button=((35, 39, 44), (50, 55, 60)),
+        header=((13, 15, 17), (19, 21, 24)),
+        header_inactive=((10, 11, 13), (14, 16, 19)),
+        tooltip=((25, 29, 33), (35, 39, 44)),
+        complementary=((8, 9, 11), (17, 19, 22)),
+        complementary_fg=(233, 228, 214),
+        complementary_fg_inactive=(150, 146, 136),
+        fg=(233, 228, 214),
+        fg_inactive=(150, 146, 136),
+        link=(222, 185, 139),
+        visited=(160, 172, 190),
+        negative=(226, 104, 92),
+        neutral=(232, 150, 72),
+        positive=(146, 196, 150),
+        accent=(212, 172, 112),         # champagne gold: focus rings, hairlines
+        hover=(238, 209, 155),
+        selection=(212, 172, 112),      # gold fill, obsidian text
+        selection_alt=(186, 150, 96),
+        selection_fg=(8, 9, 11),
+        selection_fg_inactive=(50, 44, 34),
+        selection_link=(35, 39, 44),
+        title_active=(13, 15, 17),
+        title_inactive=(10, 11, 13),
     ),
     "Light": dict(
-        window=((236, 240, 244), (226, 232, 238)),
-        view=((250, 251, 252), (241, 245, 248)),
-        button=((244, 247, 250), (231, 237, 242)),
-        header=((228, 234, 240), (219, 226, 233)),
-        header_inactive=((238, 242, 246), (230, 235, 240)),
-        tooltip=((252, 253, 254), (240, 244, 248)),
-        complementary=((28, 33, 40), (36, 42, 51)),
-        fg=(24, 30, 38),
-        fg_inactive=(96, 108, 122),
-        link=(0, 118, 124),
-        visited=(98, 78, 196),
-        negative=(196, 38, 58),
-        neutral=(154, 82, 0),
-        positive=(16, 124, 76),
-        accent=(0, 150, 158),
-        hover=(0, 176, 184),
-        selection=(0, 118, 126),
-        selection_alt=(0, 98, 106),
-        selection_fg=(255, 255, 255),
-        selection_link=(255, 240, 190),
-        title_active=(228, 234, 240),
-        title_inactive=(238, 242, 246),
+        window=((227, 222, 208), (218, 212, 196)),
+        view=((240, 236, 225), (232, 227, 214)),
+        button=((233, 228, 214), (222, 217, 204)),
+        header=((222, 217, 204), (213, 207, 192)),
+        header_inactive=((230, 225, 212), (222, 217, 204)),
+        tooltip=((240, 236, 225), (227, 222, 208)),
+        complementary=((17, 19, 22), (25, 29, 33)),
+        complementary_fg=(233, 228, 214),
+        complementary_fg_inactive=(150, 146, 136),
+        fg=(17, 19, 22),
+        fg_inactive=(86, 88, 90),
+        link=(122, 86, 30),
+        visited=(70, 80, 104),
+        negative=(168, 40, 36),
+        neutral=(146, 72, 0),
+        positive=(40, 104, 58),
+        accent=(150, 112, 52),
+        hover=(176, 136, 72),
+        selection=(35, 39, 44),         # obsidian fill, bone text
+        selection_alt=(50, 55, 60),
+        selection_fg=(233, 228, 214),
+        selection_fg_inactive=(170, 164, 150),
+        selection_link=(222, 185, 139),
+        title_active=(222, 217, 204),
+        title_inactive=(230, 225, 212),
     ),
 }
 
@@ -114,11 +121,11 @@ def build(variant, p):
                "IntensityAmount=0\nIntensityEffect=0")
     out.append(section("Colors:Button", p, *p["button"]))
     out.append(section("Colors:Complementary", p, *p["complementary"],
-                       fg=(233, 238, 243), fg_inactive=(140, 152, 165)))
+                       fg=p["complementary_fg"], fg_inactive=p["complementary_fg_inactive"]))
     out.append(section("Colors:Header", p, *p["header"]))
     out.append(section("Colors:Header][Inactive", p, *p["header_inactive"]))
     out.append(section("Colors:Selection", p, p["selection"], p["selection_alt"],
-                       fg=p["selection_fg"], fg_inactive=(210, 232, 234),
+                       fg=p["selection_fg"], fg_inactive=p["selection_fg_inactive"],
                        selection=True, fg_active=p["selection_fg"]))
     out.append(section("Colors:Tooltip", p, *p["tooltip"]))
     out.append(section("Colors:View", p, *p["view"]))

@@ -13,18 +13,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# name -> geometry / look. r = corner radius, m = content margin,
+# name -> geometry / look. r = chamfer size, m = content margin,
 # s = shadow extent, a = fill opacity per transparency mode.
 FRAMES = {
-    "dialogs/background":       dict(r=16, m=12, s=32, a=dict(base=.74, translucent=.74, opaque=.96, solid=1.0)),
-    "widgets/background":       dict(r=14, m=10, s=24, a=dict(base=.70, translucent=.70, opaque=.96, solid=1.0)),
-    "widgets/panel-background": dict(r=16, m=6,  s=24, a=dict(base=.66, translucent=.66, opaque=.96, solid=1.0)),
-    "widgets/tooltip":          dict(r=10, m=8,  s=18, a=dict(base=.88, translucent=.88, opaque=.98, solid=1.0)),
+    "dialogs/background":       dict(r=14, m=12, s=36, a=dict(base=.74, translucent=.74, opaque=.96, solid=1.0)),
+    "widgets/background":       dict(r=12, m=10, s=28, a=dict(base=.70, translucent=.70, opaque=.96, solid=1.0)),
+    "widgets/panel-background": dict(r=10, m=6,  s=28, a=dict(base=.66, translucent=.66, opaque=.96, solid=1.0)),
+    "widgets/tooltip":          dict(r=8,  m=8,  s=20, a=dict(base=.88, translucent=.88, opaque=.98, solid=1.0)),
 }
 MODES = {"base": "", "translucent": "translucent/", "opaque": "opaque/", "solid": "solid/"}
-SHADOW = {"dark": .55, "light": .26}
+SHADOW = {"dark": .60, "light": .22}
 EDGE = 32          # length of the stretchable edge/center strips
-HAIR_OPACITY = .11  # 1px glass rim, drawn in the scheme's text color
+HAIR_OPACITY = .10  # 1px bone rim on straight edges (scheme text color)
+GOLD_OPACITY = .85  # 1px gold thread on the diagonal cuts (scheme focus color)
 
 
 def falloff(alpha):
@@ -37,48 +38,66 @@ def stops(alpha):
     return "".join(f'<stop offset="{o}" stop-color="#000" stop-opacity="{a:.4f}"/>' for o, a in falloff(alpha))
 
 
-def frame_slices(r, opacity):
+# Shard geometry: top-left and bottom-right corners are cut on the diagonal
+# (the "chamfer"), the other two stay square. Every frame reads as a cut
+# prism rather than a rounded card.
+D = 2 ** .5  # a 1px band measured perpendicular to a 45 degree cut
+
+
+def corner_paths(c):
+    """Fill outline of each corner slice (c x c, local origin)."""
+    return {
+        "topleft": f"M0,{c}L{c},0V{c}Z",
+        "topright": f"M0,0H{c}V{c}H0Z",
+        "bottomleft": f"M0,0H{c}V{c}H0Z",
+        "bottomright": f"M0,0H{c}L0,{c}Z",
+    }
+
+
+def frame_slices(c, opacity):
     """Return {name: (w, h, svg_body)} for the 9 slices at local origin.
 
-    The glass rim is a filled 1px shape, not a stroke: strokes inflate the
-    element bounds Plasma measures and open gaps between the slices.
+    Rims are filled 1px shapes, never strokes: strokes inflate the element
+    bounds Plasma measures and open gaps between the slices. Straight edges
+    get a faint bone hairline; the diagonal cuts get the gold accent.
     """
     fill = f'class="ColorScheme-Background" style="fill:currentColor;opacity:{opacity}"'
     rim = f'class="ColorScheme-Text" style="fill:currentColor;opacity:{HAIR_OPACITY}"'
+    gold = f'class="ColorScheme-ButtonFocus" style="fill:currentColor;opacity:{GOLD_OPACITY}"'
     e = EDGE
-    q = r - 1
+    q = c - 1
+    cp = corner_paths(c)
     return {
         "center": (e, e, f'<rect width="{e}" height="{e}" {fill}/>'),
-        "top": (e, r, f'<rect width="{e}" height="{r}" {fill}/><rect width="{e}" height="1" {rim}/>'),
-        "bottom": (e, r, f'<rect width="{e}" height="{r}" {fill}/><rect y="{q}" width="{e}" height="1" {rim}/>'),
-        "left": (r, e, f'<rect width="{r}" height="{e}" {fill}/><rect width="1" height="{e}" {rim}/>'),
-        "right": (r, e, f'<rect width="{r}" height="{e}" {fill}/><rect x="{q}" width="1" height="{e}" {rim}/>'),
-        "topleft": (r, r, f'<path d="M0,{r}A{r},{r} 0 0 1 {r},0V{r}Z" {fill}/>'
-                          f'<path d="M0,{r}A{r},{r} 0 0 1 {r},0V1A{q},{q} 0 0 0 1,{r}Z" {rim}/>'),
-        "topright": (r, r, f'<path d="M0,0A{r},{r} 0 0 1 {r},{r}H0Z" {fill}/>'
-                           f'<path d="M0,0A{r},{r} 0 0 1 {r},{r}H{q}A{q},{q} 0 0 0 0,1Z" {rim}/>'),
-        "bottomleft": (r, r, f'<path d="M0,0H{r}V{r}A{r},{r} 0 0 1 0,0Z" {fill}/>'
-                             f'<path d="M{r},{r}A{r},{r} 0 0 1 0,0H1A{q},{q} 0 0 0 {r},{q}Z" {rim}/>'),
-        "bottomright": (r, r, f'<path d="M0,0H{r}A{r},{r} 0 0 1 0,{r}Z" {fill}/>'
-                              f'<path d="M{r},0A{r},{r} 0 0 1 0,{r}V{q}A{q},{q} 0 0 0 {q},0Z" {rim}/>'),
+        "top": (e, c, f'<rect width="{e}" height="{c}" {fill}/><rect width="{e}" height="1" {rim}/>'),
+        "bottom": (e, c, f'<rect width="{e}" height="{c}" {fill}/><rect y="{q}" width="{e}" height="1" {rim}/>'),
+        "left": (c, e, f'<rect width="{c}" height="{e}" {fill}/><rect width="1" height="{e}" {rim}/>'),
+        "right": (c, e, f'<rect width="{c}" height="{e}" {fill}/><rect x="{q}" width="1" height="{e}" {rim}/>'),
+        "topleft": (c, c, f'<path d="{cp["topleft"]}" {fill}/>'
+                          f'<path d="M0,{c}L{c},0V{D:.4f}L{D:.4f},{c}Z" {gold}/>'),
+        "topright": (c, c, f'<path d="{cp["topright"]}" {fill}/>'
+                           f'<path d="M0,0H{c}V{c}H{q}V1H0Z" {rim}/>'),
+        "bottomleft": (c, c, f'<path d="{cp["bottomleft"]}" {fill}/>'
+                             f'<path d="M0,0H1V{q}H{c}V{c}H0Z" {rim}/>'),
+        "bottomright": (c, c, f'<path d="{cp["bottomright"]}" {fill}/>'
+                              f'<path d="M{c},0L0,{c}V{c - D:.4f}L{c - D:.4f},0Z" {gold}/>'),
     }
 
 
-def mask_slices(r):
+def mask_slices(c):
     """Plain black shapes: same geometry as the frame, no rim."""
     e = EDGE
     k = 'style="fill:#000"'
-    return {
+    sl = {
         "center": (e, e, f'<rect width="{e}" height="{e}" {k}/>'),
-        "top": (e, r, f'<rect width="{e}" height="{r}" {k}/>'),
-        "bottom": (e, r, f'<rect width="{e}" height="{r}" {k}/>'),
-        "left": (r, e, f'<rect width="{r}" height="{e}" {k}/>'),
-        "right": (r, e, f'<rect width="{r}" height="{e}" {k}/>'),
-        "topleft": (r, r, f'<path d="M0,{r}A{r},{r} 0 0 1 {r},0V{r}Z" {k}/>'),
-        "topright": (r, r, f'<path d="M0,0A{r},{r} 0 0 1 {r},{r}H0Z" {k}/>'),
-        "bottomleft": (r, r, f'<path d="M0,0H{r}V{r}A{r},{r} 0 0 1 0,0Z" {k}/>'),
-        "bottomright": (r, r, f'<path d="M0,0H{r}A{r},{r} 0 0 1 0,{r}Z" {k}/>'),
+        "top": (e, c, f'<rect width="{e}" height="{c}" {k}/>'),
+        "bottom": (e, c, f'<rect width="{e}" height="{c}" {k}/>'),
+        "left": (c, e, f'<rect width="{c}" height="{e}" {k}/>'),
+        "right": (c, e, f'<rect width="{c}" height="{e}" {k}/>'),
     }
+    for name, d in corner_paths(c).items():
+        sl[name] = (c, c, f'<path d="{d}" {k}/>')
+    return sl
 
 
 def shadow_slices(s, alpha, uid):
@@ -145,7 +164,7 @@ def build(cfg, opacity, shadow_alpha, uid):
     return (f'<?xml version="1.0" encoding="UTF-8"?>\n'
             f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {sheetw} {height}" width="{sheetw}" height="{height}">\n'
             f'<defs><style type="text/css" id="current-color-scheme">'
-            f'.ColorScheme-Text{{color:#e9eef3}} .ColorScheme-Background{{color:#161a20}}'
+            f'.ColorScheme-Text{{color:#e9e4d6}} .ColorScheme-Background{{color:#111316}} .ColorScheme-ButtonFocus{{color:#d4ac70}}'
             f'</style>{sdefs}</defs>\n' + "\n".join(groups) + "\n</svg>\n")
 
 
