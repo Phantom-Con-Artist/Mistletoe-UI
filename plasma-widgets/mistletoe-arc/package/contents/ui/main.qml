@@ -13,6 +13,7 @@
 */
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
@@ -45,6 +46,8 @@ PlasmoidItem {
 
     preferredRepresentation: fullRepresentation
     compactRepresentation: null
+    // The panel reads fill from the applet root, not the representation.
+    Layout.fillWidth: true
     Plasmoid.backgroundHints: PlasmaCore.Types.NoBackground
 
     function roleOf(row, role) {
@@ -175,7 +178,8 @@ PlasmoidItem {
     // floats over apps without ever becoming the active window.
     PlasmaCore.Dialog {
         id: popup
-        visualParent: root.fullRepresentationItem
+        // Anchor to the centered content, not the whole (wide) strip.
+        visualParent: root.fullRepresentationItem ? root.fullRepresentationItem.anchorItem : null
         location: PlasmaCore.Types.BottomEdge
         type: PlasmaCore.Dialog.Tooltip
         flags: Qt.WindowDoesNotAcceptFocus | Qt.WindowStaysOnTopHint
@@ -216,39 +220,76 @@ PlasmoidItem {
     }
 
     // ---- Resting strip --------------------------------------------------
-    fullRepresentation: MouseArea {
+    // Fills the middle of the Mistletoe strip and keeps its content centered
+    // on the screen (not just within itself), whatever sits either side.
+    fullRepresentation: Item {
         id: strip
+
+        property alias anchorItem: content
 
         Kirigami.Theme.colorSet: Kirigami.Theme.Window
         Kirigami.Theme.inherit: false
 
-        // Fixed width so live numbers never make the panel jitter.
-        Layout.minimumWidth: 168
-        Layout.preferredWidth: 168
+        Layout.fillWidth: true
+        Layout.minimumWidth: content.width
+        Layout.preferredWidth: content.width
         Layout.minimumHeight: 20
 
-        hoverEnabled: true
-        onContainsMouseChanged: root.stripHovered = containsMouse
-        onClicked: if (root.hasActive) tasks.requestToggleMinimized(tasks.makeModelIndex(root.activeRow))
-        onWheel: (wheel) => root.step(wheel.angleDelta.y > 0 ? -1 : 1)
-
-        readonly property real side: Math.min(height, 32)
+        readonly property real side: Math.min(height, 40)
         readonly property bool lit: root.expanded
 
+        // The panel window spans the screen, so window-local x is screen x.
+        // Our width changes whenever a neighbor resizes, which re-runs this.
+        property real centerOffset: 0
+        function recenter() {
+            const w = strip.Window.window;
+            if (!w) {
+                return;
+            }
+            const left = strip.mapToItem(null, 0, 0).x;
+            centerOffset = w.width / 2 - left - strip.width / 2;
+        }
+        onWidthChanged: Qt.callLater(recenter)
+        Component.onCompleted: Qt.callLater(recenter)
+
+        // Only the content (plus a little slack) reacts, not the whole strip.
+        MouseArea {
+            anchors.fill: content
+            anchors.margins: -10
+            anchors.topMargin: -strip.height
+            anchors.bottomMargin: -strip.height
+            hoverEnabled: true
+            onContainsMouseChanged: root.stripHovered = containsMouse
+            onClicked: if (root.hasActive) tasks.requestToggleMinimized(tasks.makeModelIndex(root.activeRow))
+            onWheel: (wheel) => root.step(wheel.angleDelta.y > 0 ? -1 : 1)
+        }
+
         Row {
-            anchors.centerIn: parent
-            spacing: 10
-            opacity: strip.lit ? 1 : 0.55
+            id: content
+            anchors.verticalCenter: parent.verticalCenter
+            x: Math.max(0, Math.min(strip.width - width, (strip.width - width) / 2 + strip.centerOffset))
+            spacing: 12
+            opacity: strip.lit ? 1 : 0.8
             Behavior on opacity {
                 NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
             }
 
             Kirigami.Icon {
                 anchors.verticalCenter: parent.verticalCenter
-                width: Math.round(strip.side * 0.62)
-                height: width
+                width: 26
+                height: 26
                 source: root.activeIcon || "window-symbolic"
                 animated: false
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, 180)
+                elide: Text.ElideRight
+                text: root.activeName
+                color: Kirigami.Theme.textColor
+                font.family: "Exo 2"
+                font.pixelSize: 14
             }
 
             Repeater {
@@ -259,22 +300,25 @@ PlasmoidItem {
                 Row {
                     required property var modelData
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 4
+                    spacing: 5
                     Text {
                         anchors.baseline: valueText.baseline
                         text: modelData.key
                         color: Kirigami.Theme.focusColor
                         font.family: "Exo 2"
-                        font.pixelSize: 8
+                        font.pixelSize: 10
                         font.letterSpacing: 1.5
                         font.weight: Font.Medium
                     }
                     Text {
                         id: valueText
+                        // Fixed width so live numbers never make the row jitter.
+                        width: 50
                         text: modelData.value
                         color: Kirigami.Theme.textColor
                         font.family: "Exo 2"
-                        font.pixelSize: 11
+                        font.pixelSize: 13
+                        font.features: { "tnum": 1 }
                     }
                 }
             }

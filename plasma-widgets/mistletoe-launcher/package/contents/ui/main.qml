@@ -6,6 +6,7 @@
     ones Kickoff and the Application Dashboard use).
 */
 import QtQuick
+import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami
@@ -33,6 +34,11 @@ PlasmoidItem {
     // is the same arrangement Plasma's Application Dashboard uses.
     preferredRepresentation: fullRepresentation
     compactRepresentation: null
+    // A square button as tall as the strip (the panel sizes applets from
+    // the root's Layout hints).
+    Layout.minimumWidth: height
+    Layout.preferredWidth: height
+    Layout.maximumWidth: height
     fullRepresentation: CompactButton {
         id: cornerButton
         open: overlay.visible

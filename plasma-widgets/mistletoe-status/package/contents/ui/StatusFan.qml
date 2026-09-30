@@ -18,11 +18,14 @@ Item {
     // [{ id, icon, label, value, on, hint }]; read by index so a changing
     // value updates the tile in place instead of rebuilding it.
     property var tiles: []
+    // [{ id, icon, label }] power actions on the outer rail.
+    property var powers: []
     property point origin: Qt.point(width - 40, height - 40)
 
     signal tileClicked(string id)
     signal tileAltClicked(string id)
     signal tileWheel(string id, int direction)
+    signal powerClicked(string id)
     signal closed()
 
     // ---- Palette --------------------------------------------------------
@@ -44,8 +47,9 @@ Item {
     readonly property real dialRadius: 165 * unit          // distance of the dial's center
     readonly property var orbits: [330 * unit, 480 * unit]
     // Tile angles per orbit, staggered between the orbits so wide tiles
-    // near the edges never share a row (checked against 150x48 tiles).
-    readonly property var orbitAngles: [[78, 50, 22], [70, 40, 8]]
+    // near the edges never share a row (checked against 190x52 tiles).
+    readonly property var orbitAngles: [[72, 48, 22], [70, 40, 8]]
+    readonly property real railRadius: orbits[1] + 128 * unit
 
     function point(r, theta) {
         const a = theta * Math.PI / 180;
@@ -74,6 +78,10 @@ Item {
             delay: 180 + k * 90 + j * 60
         };
     }
+
+    // Clearance between the origin (a strip button) and anything laid
+    // along the screen edge, so it sits above the strip.
+    readonly property real edgeLift: 34
 
     // ---- Motion ---------------------------------------------------------
     readonly property real itemDuration: 420
@@ -165,10 +173,9 @@ Item {
                 centerX: fan.origin.x; centerY: fan.origin.y
                 focalX: fan.origin.x; focalY: fan.origin.y
                 centerRadius: fan.orbits[1] + 240 * fan.unit
-                GradientStop { position: 0; color: fan.tint(fan.ink, 0.94) }
-                GradientStop { position: 0.5; color: fan.tint(fan.ink, 0.84) }
-                GradientStop { position: 0.75; color: fan.tint(fan.ink, 0.45) }
-                GradientStop { position: 1; color: fan.tint(fan.ink, 0) }
+                GradientStop { position: 0; color: fan.tint(fan.ink, 0.97) }
+                GradientStop { position: 0.6; color: fan.tint(fan.ink, 0.95) }
+                GradientStop { position: 1; color: fan.tint(fan.ink, 0.90) }
             }
             startX: 0; startY: 0
             PathLine { x: fan.width; y: 0 }
@@ -266,20 +273,54 @@ Item {
         }
     }
 
-    // ---- Core -----------------------------------------------------------
-    Gem {
-        width: Math.round(22 * fan.unit)
-        height: width
-        x: fan.origin.x - width / 2
-        y: fan.origin.y - height / 2
-        rotation: 90 * fan.outCubic(fan.veil)
-        opacity: fan.veil
-        fill: fan.gold
-        rim: fan.gold
-        MouseArea {
-            anchors.fill: parent
-            anchors.margins: -8
-            onClicked: fan.close()
+
+    // ---- Power rail -----------------------------------------------------
+    // Small gems on an outer arc; the caption names the one under the
+    // pointer. Shut down turns gold, the rest light their rim.
+    Repeater {
+        model: fan.powers.length
+        Item {
+            id: powerItem
+            required property int index
+            readonly property var info: fan.powers[index] || ({})
+            readonly property real theta: 84 - index * 9
+            readonly property real t: fan.outCubic(fan.veil * 1.6 - 0.4 - index * 0.05)
+            readonly property point at: fan.point(fan.railRadius, theta)
+            readonly property bool hot: powerMouse.containsMouse
+
+            width: Math.round(34 * fan.unit)
+            height: width
+            x: at.x - width / 2
+            y: at.y - height / 2
+            opacity: t
+            scale: (0.4 + 0.6 * t) * (hot ? 1.15 : 1)
+            Behavior on scale {
+                enabled: fan.veil >= 1
+                NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+            }
+
+            Gem {
+                anchors.fill: parent
+                fill: powerItem.hot && powerItem.info.id === "shutdown" ? fan.gold : fan.tint(fan.ink, 0.92)
+                rim: powerItem.hot ? fan.gold : fan.tint(fan.bone, 0.35)
+            }
+            Kirigami.Icon {
+                anchors.centerIn: parent
+                width: Math.round(parent.width * 0.46)
+                height: width
+                source: powerItem.info.icon || ""
+                isMask: true
+                color: powerItem.hot && powerItem.info.id === "shutdown" ? fan.ink : fan.bone
+                animated: false
+            }
+            MouseArea {
+                id: powerMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onEntered: fan.hint = powerItem.info.label || ""
+                onExited: fan.hint = ""
+                onClicked: fan.powerClicked(powerItem.info.id)
+            }
         }
     }
 
@@ -287,9 +328,9 @@ Item {
     Column {
         // Clear the outermost tile (not just its orbit) so the date never
         // runs under it: the lowest tile sits at theta 8 on the outer orbit.
-        readonly property real reach: fan.orbits[1] * Math.cos(8 * Math.PI / 180) + 75 * fan.unit + 36 * fan.unit
+        readonly property real reach: fan.orbits[1] * Math.cos(8 * Math.PI / 180) + 95 * fan.unit + 36 * fan.unit
         x: fan.sx < 0 ? fan.origin.x - reach - width : fan.origin.x + reach
-        y: fan.sy < 0 ? fan.origin.y + 10 - height : fan.origin.y - 10
+        y: fan.sy < 0 ? fan.origin.y - fan.edgeLift - height : fan.origin.y + fan.edgeLift
         width: Math.min(360 * fan.unit, fan.width / 3)
         opacity: fan.veil
         spacing: 2

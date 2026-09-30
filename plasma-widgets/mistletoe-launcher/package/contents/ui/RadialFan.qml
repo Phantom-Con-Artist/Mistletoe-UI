@@ -51,15 +51,15 @@ Item {
     readonly property real thetaMax: 84
     readonly property real unit: Math.max(0.6, Math.min(1, (Math.min(width, height) - 120) / 860))
     readonly property int rings: 5
-    readonly property real r0: 118 * unit
-    readonly property real step: 66 * unit
-    readonly property real cell: 44 * unit
+    readonly property real r0: 132 * unit
+    readonly property real step: 76 * unit
+    readonly property real cell: 54 * unit
     readonly property real railRadius: ringRadius(rings - 1) + 80 * unit
     readonly property var capacities: {
         const caps = [];
         for (let k = 0; k < rings; ++k) {
             const arc = ringRadius(k) * (thetaMax - thetaMin) * Math.PI / 180;
-            caps.push(Math.max(1, Math.floor(arc / (58 * unit))));
+            caps.push(Math.max(1, Math.floor(arc / (68 * unit))));
         }
         return caps;
     }
@@ -104,6 +104,10 @@ Item {
             delay: k * 55 + j * 18
         };
     }
+
+    // Clearance between the origin (a strip button) and anything laid
+    // along the screen edge, so it sits above the strip.
+    readonly property real edgeLift: 34
 
     // ---- Motion ---------------------------------------------------------
     // One clock drives the whole cascade: each item maps `bloom` through its
@@ -245,10 +249,9 @@ Item {
                 centerX: fan.origin.x; centerY: fan.origin.y
                 focalX: fan.origin.x; focalY: fan.origin.y
                 centerRadius: fan.railRadius + 240 * fan.unit
-                GradientStop { position: 0; color: fan.tint(fan.ink, 0.94) }
-                GradientStop { position: 0.5; color: fan.tint(fan.ink, 0.84) }
-                GradientStop { position: 0.75; color: fan.tint(fan.ink, 0.45) }
-                GradientStop { position: 1; color: fan.tint(fan.ink, 0) }
+                GradientStop { position: 0; color: fan.tint(fan.ink, 0.97) }
+                GradientStop { position: 0.6; color: fan.tint(fan.ink, 0.95) }
+                GradientStop { position: 1; color: fan.tint(fan.ink, 0.90) }
             }
             startX: 0; startY: 0
             PathLine { x: fan.width; y: 0 }
@@ -323,7 +326,7 @@ Item {
                 }
                 Kirigami.Icon {
                     anchors.centerIn: parent
-                    width: Math.round(parent.width * 0.6)
+                    width: Math.round(parent.width * 0.66)
                     height: width
                     source: cellItem.model.decoration
                     animated: false
@@ -360,7 +363,7 @@ Item {
             readonly property point at: fan.point(fan.railRadius, theta)
             readonly property bool active: fan.railIndex === index && !fan.query
 
-            width: Math.round(28 * fan.unit)
+            width: Math.round(32 * fan.unit)
             height: width
             x: at.x - width / 2
             y: at.y - height / 2
@@ -400,29 +403,12 @@ Item {
         }
     }
 
-    // ---- Core -----------------------------------------------------------
-    // Sits over the launcher button; the button "turns" into this gem.
-    Gem {
-        width: Math.round(22 * fan.unit)
-        height: width
-        x: fan.origin.x - width / 2
-        y: fan.origin.y - height / 2
-        rotation: 90 * fan.outCubic(fan.veil)
-        opacity: fan.veil
-        fill: fan.gold
-        rim: fan.gold
-        MouseArea {
-            anchors.fill: parent
-            anchors.margins: -8
-            onClicked: fan.close()
-        }
-    }
 
     // ---- Caption --------------------------------------------------------
     Column {
         readonly property real gap: 44 * fan.unit
         x: fan.sx > 0 ? fan.origin.x + fan.railRadius + gap : fan.origin.x - fan.railRadius - gap - width
-        y: fan.sy < 0 ? fan.origin.y + 10 - height : fan.origin.y - 10
+        y: fan.sy < 0 ? fan.origin.y - fan.edgeLift - height : fan.origin.y + fan.edgeLift
         width: Math.min(420 * fan.unit, fan.width / 2)
         opacity: fan.veil
         spacing: 2

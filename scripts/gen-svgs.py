@@ -16,12 +16,13 @@ ROOT = Path(__file__).resolve().parent.parent
 # name -> geometry / look. r = chamfer size, m = content margin,
 # s = shadow extent, a = fill opacity per transparency mode.
 # Surfaces are matte, not glass: blur is off (see plasmarc), so fills stay
-# nearly opaque. The panel is invisible: Mistletoe has no taskbar, so its
-# panels only carry floating widgets that draw their own plates.
+# nearly opaque. The panel is the Mistletoe strip: one matte band along the
+# screen edge with a 1px hairline; Plasma drops the borders that touch the
+# screen edge, so only the inner hairline and a faint shadow remain.
 FRAMES = {
     "dialogs/background":       dict(r=12, m=10, s=30, a=dict(base=.96, translucent=.96, opaque=.98, solid=1.0)),
     "widgets/background":       dict(r=10, m=8,  s=24, a=dict(base=.94, translucent=.94, opaque=.97, solid=1.0)),
-    "widgets/panel-background": dict(r=4,  m=2,  s=4,  a=dict(base=0, translucent=0, opaque=0, solid=0), invisible=True),
+    "widgets/panel-background": dict(r=4,  m=3,  s=10, a=dict(base=.97, translucent=.97, opaque=.98, solid=1.0), shadow=.5),
     "widgets/tooltip":          dict(r=8,  m=7,  s=18, a=dict(base=.97, translucent=.97, opaque=.98, solid=1.0)),
 }
 MODES = {"base": "", "translucent": "translucent/", "opaque": "opaque/", "solid": "solid/"}
@@ -181,7 +182,7 @@ def main():
                 out = base / f"{sub}{name}.svg"
                 out.parent.mkdir(parents=True, exist_ok=True)
                 uid = name.replace("/", "-") + mode[:2]
-                shadow = 0 if cfg.get("invisible") else salpha
+                shadow = 0 if cfg.get("invisible") else salpha * cfg.get("shadow", 1)
                 out.write_text(build(cfg, cfg["a"][mode], shadow, uid))
         print("wrote", base)
 

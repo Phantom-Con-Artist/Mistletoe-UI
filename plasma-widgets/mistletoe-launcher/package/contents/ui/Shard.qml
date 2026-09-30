@@ -16,6 +16,9 @@ Shape {
     readonly property real h: rimWidth / 2
 
     preferredRendererType: Shape.CurveRenderer
+    // Qt's curve renderer spins forever on degenerate (zero-size) paths,
+    // which hangs plasmashell; skip drawing until there is real size.
+    visible: width > 2 && height > 2
 
     ShapePath {
         fillColor: shard.fill

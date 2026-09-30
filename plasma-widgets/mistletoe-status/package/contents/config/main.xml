@@ -8,5 +8,8 @@
         <entry name="showDigitalTime" type="Bool">
             <default>true</default>
         </entry>
+        <entry name="lastRead" type="String">
+            <default></default>
+        </entry>
     </group>
 </kcfg>

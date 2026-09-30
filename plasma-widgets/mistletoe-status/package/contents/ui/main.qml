@@ -2,9 +2,10 @@
     Mistletoe Status: a corner clock that opens a fullscreen, transparent
     overlay where a large analog dial and status tiles bloom radially.
 
-    Tiles: Bluetooth, network, volume, media, lock screen, settings.
+    Tiles: Bluetooth, network, volume, media, notifications, settings.
     Left-click acts, right-click opens the matching settings page, and the
-    wheel adjusts the volume.
+    wheel adjusts the volume. An outer rail of gems holds the power
+    actions (lock, sleep, restart, shut down, log out).
 */
 import QtQuick
 import org.kde.plasma.plasmoid
@@ -16,6 +17,7 @@ import org.kde.plasma.networkmanagement as PlasmaNM
 import org.kde.plasma.private.volume
 import org.kde.plasma.private.mpris as Mpris
 import org.kde.plasma.private.sessions as Sessions
+import org.kde.notificationmanager as NotificationManager
 
 PlasmoidItem {
     id: root
@@ -116,9 +118,63 @@ PlasmoidItem {
     readonly property string mediaValue: !player ? i18n("Nothing playing")
         : [player.artist, player.track].filter(s => s && s.length > 0).join(" — ") || player.identity
 
+    // ---- Notifications --------------------------------------------------
+    // Popups and history stay with Plasma's notifications applet (in the
+    // strip's tray); the fan shows the unread count and owns Do Not Disturb.
+    NotificationManager.Settings {
+        id: notificationSettings
+    }
+    NotificationManager.Notifications {
+        id: notifications
+        showExpired: true
+        showDismissed: true
+        showJobs: false
+        showNotifications: true
+        // Remembered across restarts so old history doesn't count as unread.
+        lastRead: Plasmoid.configuration.lastRead ? new Date(Plasmoid.configuration.lastRead) : new Date(0)
+    }
+
+    function markAllRead() {
+        Plasmoid.configuration.lastRead = new Date().toISOString();
+    }
+    readonly property bool dnd: notificationSettings.notificationsInhibitedUntil > now
+    readonly property int unread: notifications.unreadNotificationsCount
+
+    function toggleDoNotDisturb() {
+        if (dnd) {
+            notificationSettings.notificationsInhibitedUntil = undefined; // reset
+            notificationSettings.revokeApplicationInhibitions();
+        } else {
+            const until = new Date();
+            until.setFullYear(until.getFullYear() + 1);
+            notificationSettings.notificationsInhibitedUntil = until;
+        }
+        notificationSettings.save();
+    }
+
     // ---- Session --------------------------------------------------------
     Sessions.SessionManagement {
         id: session
+    }
+
+    readonly property var powers: [
+        { id: "lock", icon: "system-lock-screen-symbolic", label: i18n("Lock") },
+        { id: "suspend", icon: "system-suspend-symbolic", label: i18n("Sleep") },
+        { id: "reboot", icon: "system-reboot-symbolic", label: i18n("Restart") },
+        { id: "shutdown", icon: "system-shutdown-symbolic", label: i18n("Shut down") },
+        { id: "logout", icon: "system-log-out-symbolic", label: i18n("Log out") }
+    ].filter(p => p.id !== "suspend" || session.canSuspend)
+
+    // Restart, shut down and log out go through Plasma's confirmation.
+    function power(id) {
+        fan.close();
+        switch (id) {
+        case "lock": session.lock(); break;
+        case "suspend": session.suspend(); break;
+        case "reboot": session.requestReboot(); break;
+        case "shutdown": session.requestShutdown(); break;
+        case "logout": session.requestLogout(); break;
+        }
     }
 
     readonly property var tiles: [
@@ -134,8 +190,11 @@ PlasmoidItem {
         { id: "media", icon: playing ? "media-playback-pause-symbolic" : "media-playback-start-symbolic",
           label: player ? player.identity : i18n("Media"), value: mediaValue, on: playing,
           hint: player ? i18n("Click to play or pause  ·  scroll to skip  ·  right-click to show") : "" },
-        { id: "lock", icon: "system-lock-screen-symbolic", label: i18n("Session"), value: i18n("Lock screen"),
-          on: false, hint: i18n("Click to lock  ·  right-click for power options") },
+        { id: "notifications", icon: dnd ? "notifications-disabled-symbolic" : "notification-active-symbolic",
+          label: i18n("Notifications"),
+          value: dnd ? i18n("Do not disturb") : unread > 0 ? i18np("%1 unread", "%1 unread", unread) : i18n("All caught up"),
+          on: !dnd && unread > 0,
+          hint: i18n("Click for Do Not Disturb  ·  right-click to mark all read") },
         { id: "settings", icon: "configure-symbolic", label: i18n("System"), value: i18n("Settings"),
           on: false, hint: i18n("Open System Settings") }
     ]
@@ -146,7 +205,7 @@ PlasmoidItem {
         case "network": KCMUtils.KCMLauncher.openSystemSettings("kcm_networkmanagement"); break;
         case "volume": if (sink) sink.muted = !sink.muted; return;
         case "media": if (player) player.PlayPause(); return;
-        case "lock": session.lock(); break;
+        case "notifications": toggleDoNotDisturb(); return;
         case "settings": KCMUtils.KCMLauncher.openSystemSettings(""); break;
         }
         fan.close();
@@ -158,7 +217,7 @@ PlasmoidItem {
         case "network": KCMUtils.KCMLauncher.openSystemSettings("kcm_networkmanagement"); break;
         case "volume": KCMUtils.KCMLauncher.openSystemSettings("kcm_pulseaudio"); break;
         case "media": if (player) player.Raise(); break;
-        case "lock": session.requestLogoutPrompt(); break;
+        case "notifications": markAllRead(); return;
         default: return;
         }
         fan.close();
@@ -205,6 +264,8 @@ PlasmoidItem {
             anchors.fill: parent
             now: root.now
             tiles: root.tiles
+            powers: root.powers
+            onPowerClicked: (id) => root.power(id)
             onTileClicked: (id) => root.act(id)
             onTileAltClicked: (id) => root.actAlt(id)
             onTileWheel: (id, direction) => root.wheel(id, direction)
