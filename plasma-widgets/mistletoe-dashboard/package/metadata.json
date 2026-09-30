@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Desktop dashboard: favorite apps, the apps you use most, the most power-hungry apps right now, and power actions",
+        "Icon": "view-grid-symbolic",
+        "Id": "org.mistletoe.dashboard",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Dashboard",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
