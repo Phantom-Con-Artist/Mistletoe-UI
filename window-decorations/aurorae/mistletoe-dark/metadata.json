@@ -1,0 +1,14 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Description": "Plasma Mistletoe (Dark): slim shard-cut window decoration",
+        "Id": "mistletoe-dark",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Dark",
+        "Version": "0.1.0"
+    }
+}

@@ -12,5 +12,8 @@ done
 for c in "$ROOT"/color-schemes/*.colors; do
     link "$c" "$DATA/color-schemes/$(basename "$c")"
 done
+for d in "$ROOT"/window-decorations/aurorae/*/; do
+    link "${d%/}" "$DATA/aurorae/themes/$(basename "$d")"
+done
 link "$ROOT/fonts/Exo2" "$DATA/fonts/Exo2"
 fc-cache -f "$DATA/fonts" >/dev/null && echo "font cache refreshed"
