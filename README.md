@@ -111,7 +111,8 @@ mistletoe-menu fonts accent=Mythril text="Exo 2"
 | Text | Exo 2 | everyday text, and your apps' UI font |
 
 Neon and Ember bring their own wallpapers; switching back to Dark or Light
-restores the default. A wallpaper of your own is never replaced.
+restores the default. A wallpaper of your own stays until you change editions;
+changing editions also applies that edition's wallpaper.
 
 ### Check a new app
 

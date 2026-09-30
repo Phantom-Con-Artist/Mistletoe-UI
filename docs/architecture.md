@@ -69,12 +69,15 @@ dial can read and trigger any app's menus. Other commands:
 | `edition NAME` | apply a Global Theme and its Konsole colours |
 | `fonts ROLE=FAMILY …` | set the font roles |
 | `options` | editions and font choices for the dial |
-| `sync-wallpaper` | give Neon/Ember their wallpaper, mirror it to the lock screen, keep the GTK layer imported, refresh lock screen values |
+| `sync-wallpaper` | apply the edition wallpaper on edition changes, mirror the current image to the lock screen, keep the GTK layer imported, refresh lock screen values |
 | `backdrop X Y W H SW SH` | light or dark: the wallpaper behind a rectangle |
 | `lock-settings` | text contrast and distro line for the lock screen |
 
 The dial runs `sync-wallpaper` whenever the colour scheme changes (every
-theme switch) and at start-up.
+theme switch) and at start-up. The bridge also watches desktop and global-theme
+settings, including changes made in System Settings. Custom wallpapers remain
+within an edition; switching editions replaces them. The last observed edition
+is stored in `mistletoerc` so restarting the bridge keeps a custom wallpaper.
 
 ### KWin (`kwin-scripts/mistletoe-edge`)
 

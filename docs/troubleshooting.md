@@ -33,8 +33,9 @@ have no menu bar to share.
 reset it: its saved position is ignored unless it is on screen.
 
 **The Neon or Ember wallpaper didn't follow the theme.** Run
-`mistletoe-menu sync-wallpaper`. It never replaces a wallpaper that isn't one
-of Mistletoe's.
+`mistletoe-menu edition ember` (or `neon`, `dark`, `light`) to reapply its
+wallpaper. Edition changes replace custom wallpapers; choosing a custom image
+keeps it until the next edition change. The bridge watches System Settings too.
 
 **The lock screen looks like Plasma's default.** Check
 `kreadconfig6 --file kscreenlockerrc --group Greeter --key Theme` prints

@@ -1,0 +1,12 @@
+[SddmGreeterTheme]
+Name=Mistletoe
+Description=The Mistletoe lock screen design for SDDM
+Author=Subhradeep Sarkar
+License=GPL-2.0-or-later
+Type=sddm-theme
+Version=0.1.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=mistletoe
+Theme-API=2.0
+QtVersion=6

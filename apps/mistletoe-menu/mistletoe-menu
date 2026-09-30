@@ -26,6 +26,8 @@ org.kde.kappmenuview on the session bus, so `serve` holds that name.
 The dial gets SERVICE and PATH for the active window from Plasma's task
 model and runs `dump` / `click` through Plasma's executable data source.
 """
+import configparser
+import fcntl
 import json
 import os
 import sqlite3
@@ -218,20 +220,32 @@ def places():
 # Plasma won't replace a wallpaper you've set when a Global Theme is applied,
 # so the dial calls this whenever the colour scheme changes. Neon and Ember
 # bring their own wallpaper; going back to Dark or Light from one of them
-# restores Vigil. Only Mistletoe wallpapers are ever replaced: a picture of
-# your own is left alone.
-EDITION_WALLPAPER = {"org.mistletoe.neon.desktop": "Mistletoe-Neon",
+# restores Vigil. A custom picture stays until the next edition change.
+EDITION_WALLPAPER = {"org.mistletoe.dark.desktop": "Mistletoe",
+                     "org.mistletoe.light.desktop": "Mistletoe",
+                     "org.mistletoe.neon.desktop": "Mistletoe-Neon",
                      "org.mistletoe.ember.desktop": "Mistletoe-Ember"}
-SPECIAL = set(EDITION_WALLPAPER.values())
 
 
 def current_wallpapers():
-    conf = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "plasma-org.kde.plasma.desktop-appletsrc"
+    conf = CONFIG / "plasma-org.kde.plasma.desktop-appletsrc"
+    desktop = configparser.ConfigParser(interpolation=None, strict=False)
     try:
-        text = conf.read_text()
+        desktop.read_string(conf.read_text())
     except OSError:
         return []
-    return [line.split("=", 1)[1].strip() for line in text.splitlines() if line.startswith("Image=")]
+    images = []
+    for section in desktop.sections():
+        if not section.startswith("Containments][") or not section.endswith("][Wallpaper][org.kde.image][General"):
+            continue
+        parent = section.split("][Wallpaper]", 1)[0]
+        if desktop.get(parent, "plugin", fallback="") not in ("org.kde.plasma.folder", "org.kde.desktop"):
+            continue
+        screen = desktop.getint(parent, "lastScreen", fallback=-1)
+        image = desktop.get(section, "Image", fallback="")
+        if image and screen >= 0:
+            images.append((screen != 0, screen, image))
+    return [image for _, _, image in sorted(images)]
 
 
 def ensure_gtk_layer():
@@ -244,29 +258,49 @@ def ensure_gtk_layer():
                 css.write_text(text.rstrip("\n") + "\n@import 'mistletoe.css';\n")
 
 
-def sync_wallpaper():
+def sync_wallpaper(force=False):
+    # The dial and the settings watcher can notice the same theme change.
+    CONFIG.mkdir(parents=True, exist_ok=True)
+    with (CONFIG / "mistletoe-wallpaper.lock").open("a") as guard:
+        fcntl.flock(guard, fcntl.LOCK_EX)
+        _sync_wallpaper(force)
+
+
+def _sync_wallpaper(force=False):
     ensure_gtk_layer()
     lnf = subprocess.run(["kreadconfig6", "--group", "KDE", "--key", "LookAndFeelPackage"],
                          capture_output=True, text=True).stdout.strip()
     images = current_wallpapers()
-    names = {unquote(urlparse(i).path).rstrip("/").split("/")[-1] for i in images}
-    ours = all("/wallpapers/Mistletoe" in i for i in images) and images
-    if not ours:
+    if not images:
         return
-    if lnf in EDITION_WALLPAPER:
+    previous = kread("Wallpaper", "LastLookAndFeel")
+    image = images[0]
+    if lnf in EDITION_WALLPAPER and (force or (previous and previous != lnf)):
         want = EDITION_WALLPAPER[lnf]
-    elif lnf.startswith("org.mistletoe.") and names & SPECIAL:
-        want = "Mistletoe"
-    else:
-        want = next(iter(names)) if len(names) == 1 else "Mistletoe"
-    if names != {want}:
-        subprocess.run(["plasma-apply-wallpaperimage", str(DATA / "wallpapers" / want)], capture_output=True)
+        result = subprocess.run(["plasma-apply-wallpaperimage", str(DATA / "wallpapers" / want)], capture_output=True)
+        if result.returncode:
+            print(result.stderr.decode(errors="replace"), file=sys.stderr)
+            return
+        flush_wallpaper()
+        image = (DATA / "wallpapers" / want).as_uri()
         print("wallpaper ->", want)
+    if previous != lnf:
+        subprocess.run(["kwriteconfig6", "--file", "mistletoerc", "--group", "Wallpaper",
+                        "--key", "LastLookAndFeel", lnf], capture_output=True)
     # The lock screen shows the same wallpaper as the desktop.
+    image = Path(unquote(urlparse(image).path)).resolve().as_uri()
     subprocess.run(["kwriteconfig6", "--file", "kscreenlockerrc", "--group", "Greeter", "--group", "Wallpaper",
                     "--group", "org.kde.image", "--group", "General", "--key", "Image",
-                    (DATA / "wallpapers" / want).as_uri()], capture_output=True)
+                    image], capture_output=True)
     lock_settings()
+
+
+def flush_wallpaper():
+    # Wallpaper scripting writes can precede Plasma's normal config save.
+    # reloadConfig requests that save without rebuilding the desktop layout.
+    bus().call_sync("org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell", "evaluateScript",
+                    GLib.Variant("(s)", ("var ds = desktops(); for (var i = 0; i < ds.length; ++i) ds[i].reloadConfig();",)),
+                    GLib.VariantType.new("(s)"), Gio.DBusCallFlags.NONE, 3000, None)
 
 
 # ---- Fonts and editions ------------------------------------------------------
@@ -336,7 +370,7 @@ def edition(name):
     subprocess.run(["plasma-apply-lookandfeel", "--apply", f"org.mistletoe.{name}.desktop"], capture_output=True)
     subprocess.run(["kwriteconfig6", "--file", "konsolerc", "--group", "Desktop Entry", "--key",
                     "DefaultProfile", f"Mistletoe{name.capitalize()}.profile"], capture_output=True)
-    sync_wallpaper()
+    sync_wallpaper(force=True)
 
 
 def options():
@@ -433,6 +467,28 @@ def lock_settings():
 
 def serve():
     Gio.bus_own_name_on_connection(bus(), "org.kde.kappmenuview", Gio.BusNameOwnerFlags.NONE, None, None)
+    # Directory monitoring includes KConfig's atomic file replacements.
+    # Debounce palette and global-theme writes into one wallpaper update.
+    monitor = Gio.File.new_for_path(str(CONFIG)).monitor_directory(Gio.FileMonitorFlags.NONE, None)
+    pending = 0
+    def refresh():
+        nonlocal pending
+        pending = 0
+        try:
+            sync_wallpaper()
+        except Exception as error:
+            print(f"Wallpaper sync failed: {error}", file=sys.stderr)
+        return GLib.SOURCE_REMOVE
+    def changed(_monitor, file, other, _event):
+        nonlocal pending
+        names = {p.get_basename() for p in (file, other) if p is not None}
+        if not names & {"kdeglobals", "plasma-org.kde.plasma.desktop-appletsrc"}:
+            return
+        if pending:
+            GLib.source_remove(pending)
+        pending = GLib.timeout_add(600, refresh)
+    monitor.connect("changed", changed)
+    refresh()
     GLib.MainLoop().run()
 
 
