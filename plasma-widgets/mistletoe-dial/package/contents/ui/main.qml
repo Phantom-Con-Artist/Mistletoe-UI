@@ -1,8 +1,8 @@
 /*
     Mistletoe Dial: one radial way into every app.
 
-    A gem in the strip (or Meta+Space) opens a semicircle dial from the
-    left screen edge with two modes:
+    A gem in the strip, Meta+Space, or pushing the pointer against the left
+    screen edge opens a semicircle dial from that edge with three modes:
 
       App       the menus of the window you were just using: its menus on
                 the inner ring, their entries on the outer ring, submenus
@@ -10,8 +10,15 @@
                 bridge (com.canonical.dbusmenu), so it works for any app
                 that exports its menu bar: KDE/Qt apps, and GTK apps with
                 appmenu-gtk-module.
+      Places    Dolphin's places and bookmarks, folders you used lately,
+                mounted drives, network and trash; opens Dolphin there.
       Settings  every System Settings page, grouped as System Settings
                 groups them; each opens alone in its own window.
+
+    Other widgets open the dial in a given mode by writing it to
+    mistletoerc [Dial] nextMode and invoking the dial's shortcut, whose
+    name the dial records in mistletoerc [Dial] action (and in kwinrc for
+    the left-edge KWin script).
 
     Typing searches the whole current mode.
 */
@@ -163,6 +170,20 @@ PlasmoidItem {
         return out;
     }
 
+    // ---- Places mode ----------------------------------------------------------
+    property var places: []        // [{ name, icon, entries: [{ label, icon, detail, url }] }]
+    property int placesCategory: 0
+    function loadPlaces() {
+        run(bridge + " places", (out) => {
+            try {
+                places = JSON.parse(out);
+            } catch (e) {
+                places = [];
+            }
+            placesCategory = Math.min(placesCategory, Math.max(0, places.length - 1));
+        });
+    }
+
     // ---- Settings mode ----------------------------------------------------
     property var settings: ({ categories: [], modules: [] })
     property int settingsCategory: 0
@@ -175,7 +196,10 @@ PlasmoidItem {
             }
         });
     }
-    Component.onCompleted: loadSettings()
+    Component.onCompleted: {
+        loadSettings();
+        register();
+    }
 
     function moduleEntry(m) {
         return {
@@ -190,8 +214,10 @@ PlasmoidItem {
 
     readonly property var categories: mode === "App"
         ? menu.map(m => ({ name: m.label, icon: menuIcons[m.label.toLowerCase()] || "application-menu" }))
+        : mode === "Places" ? places.map(g => ({ name: g.name, icon: g.icon }))
         : settings.categories.map(c => ({ name: c.name, icon: c.icon }))
-    readonly property int categoryIndex: mode === "App" ? appCategory : settingsCategory
+    readonly property int categoryIndex: mode === "App" ? appCategory
+        : mode === "Places" ? placesCategory : settingsCategory
 
     readonly property var entries: {
         if (mode === "App") {
@@ -202,6 +228,12 @@ PlasmoidItem {
             const list = stack.length > 0 ? stack[stack.length - 1].children
                 : (menu[appCategory] ? menu[appCategory].children : []);
             return list.map(n => toEntry(n, ""));
+        }
+        if (mode === "Places") {
+            const all = query ? places.reduce((acc, g) => acc.concat(g.entries), [])
+                : (places[placesCategory] ? places[placesCategory].entries : []);
+            return all.filter(e => !query || (e.label + " " + e.detail).toLowerCase().includes(query))
+                .map(e => ({ label: e.label, icon: e.icon, detail: e.detail, enabled: true, hasChildren: false, url: e.url }));
         }
         if (query) {
             const words = query.split(/\s+/);
@@ -223,6 +255,8 @@ PlasmoidItem {
         if (mode === "App") {
             appCategory = i;
             stack = [];
+        } else if (mode === "Places") {
+            placesCategory = i;
         } else {
             settingsCategory = i;
         }
@@ -247,34 +281,65 @@ PlasmoidItem {
                 tasks.requestActivate(tasks.makeModelIndex(t.row));
             }
             run(bridge + " click " + q(t.service) + " " + q(t.path) + " " + e.node.id);
+        } else if (mode === "Places") {
+            fan.close();
+            run("dolphin " + q(e.url));
         } else {
             fan.close();
             run("kcmshell6 " + q(e.module));
         }
     }
 
-    function toggleMode() {
-        if (mode === "Settings" && !appAvailable) {
+    readonly property var modes: [
+        { name: "App", enabled: appAvailable },
+        { name: "Places", enabled: true },
+        { name: "Settings", enabled: true }
+    ]
+    function chooseMode(name) {
+        if (!modes.some(m => m.name === name && m.enabled)) {
             return;
         }
-        mode = mode === "App" ? "Settings" : "App";
+        mode = name;
         fan.entryIndex = 0;
         fan.keyTarget.text = "";
     }
+    // Tab: the next available mode, wrapping round.
+    function nextMode() {
+        const names = modes.filter(m => m.enabled).map(m => m.name);
+        chooseMode(names[(names.indexOf(mode) + 1) % names.length]);
+    }
 
+    // Opening reads (and clears) a one-shot mode request left by another
+    // widget, e.g. the status fan's Settings tile.
     function toggle() {
         if (overlay.visible) {
             fan.close();
             return;
         }
-        mode = appAvailable ? "App" : "Settings";
-        loadMenu();
-        if (settings.modules.length === 0) {
-            loadSettings();
-        }
-        fan.entryIndex = 0;
-        overlay.open();
-        Qt.callLater(fan.open);
+        run("kreadconfig6 --file mistletoerc --group Dial --key nextMode"
+            + " && kwriteconfig6 --file mistletoerc --group Dial --key nextMode ''", (out) => {
+            const wanted = out.trim();
+            mode = modes.some(m => m.name === wanted && m.enabled) ? wanted : (appAvailable ? "App" : "Places");
+            // Each open starts at the first group of every mode.
+            placesCategory = 0;
+            settingsCategory = 0;
+            loadMenu();
+            loadPlaces();
+            if (settings.modules.length === 0) {
+                loadSettings();
+            }
+            fan.entryIndex = 0;
+            overlay.open();
+            Qt.callLater(fan.open);
+        });
+    }
+
+    // Tell other widgets and the left-edge KWin script how to open the dial.
+    function register() {
+        const action = q("activate widget " + Plasmoid.id);
+        run("kwriteconfig6 --file mistletoerc --group Dial --key action " + action
+            + " && kwriteconfig6 --file kwinrc --group Script-mistletoe-edge --key action " + action
+            + " && qdbus org.kde.KWin /KWin reconfigure");
     }
 
     Connections {
@@ -317,7 +382,7 @@ PlasmoidItem {
         }
     }
     toolTipMainText: i18n("Dial")
-    toolTipSubText: i18n("The active app's menus and every settings page (Meta+Space)")
+    toolTipSubText: i18n("The active app's menus, your places and every settings page (Meta+Space, or push the pointer against the left edge)")
 
     Overlay {
         id: overlay
@@ -329,8 +394,9 @@ PlasmoidItem {
             id: fan
             anchors.fill: parent
             mode: root.mode
-            canSwitch: root.appAvailable
-            context: root.mode === "App" ? root.target.name : i18n("System Settings")
+            modes: root.modes
+            context: root.mode === "App" ? root.target.name
+                : root.mode === "Places" ? i18n("Places") : i18n("System Settings")
             trail: root.trail
             status: root.mode === "App" && root.menuLoading ? i18n("Reading %1's menus…", root.target.name)
                 : root.mode === "App" && root.menu.length === 0 && !root.menuLoading
@@ -347,7 +413,8 @@ PlasmoidItem {
                     fan.entryIndex = 0;
                 }
             }
-            onModeToggled: root.toggleMode()
+            onModeToggled: root.nextMode()
+            onModeChosen: (name) => root.chooseMode(name)
             onClosed: overlay.hide()
         }
     }

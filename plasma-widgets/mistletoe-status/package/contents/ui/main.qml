@@ -18,6 +18,7 @@ import org.kde.plasma.private.volume
 import org.kde.plasma.private.mpris as Mpris
 import org.kde.plasma.private.sessions as Sessions
 import org.kde.notificationmanager as NotificationManager
+import org.kde.plasma.plasma5support as P5Support
 
 PlasmoidItem {
     id: root
@@ -152,6 +153,21 @@ PlasmoidItem {
         notificationSettings.save();
     }
 
+    // ---- Settings ------------------------------------------------------------
+    // The Settings tile opens the Mistletoe dial in Settings mode (it records
+    // its shortcut in mistletoerc); without a dial, plain System Settings.
+    P5Support.DataSource {
+        id: shell
+        engine: "executable"
+        onNewData: (source) => disconnectSource(source)
+    }
+    function openSettings() {
+        shell.connectSource("a=$(kreadconfig6 --file mistletoerc --group Dial --key action); "
+            + "if [ -n \"$a\" ]; then kwriteconfig6 --file mistletoerc --group Dial --key nextMode Settings"
+            + " && qdbus org.kde.kglobalaccel /component/plasmashell org.kde.kglobalaccel.Component.invokeShortcut \"$a\"; "
+            + "else systemsettings; fi #" + Date.now());
+    }
+
     // ---- Session --------------------------------------------------------
     Sessions.SessionManagement {
         id: session
@@ -196,7 +212,8 @@ PlasmoidItem {
           on: !dnd && unread > 0,
           hint: i18n("Click for Do Not Disturb  ·  right-click to mark all read") },
         { id: "settings", icon: "configure-symbolic", label: i18n("System"), value: i18n("Settings"),
-          on: false, hint: i18n("Open System Settings") }
+          hint: i18n("Click for the settings dial  ·  right-click for System Settings"),
+          on: false }
     ]
 
     function act(id) {
@@ -206,7 +223,7 @@ PlasmoidItem {
         case "volume": if (sink) sink.muted = !sink.muted; return;
         case "media": if (player) player.PlayPause(); return;
         case "notifications": toggleDoNotDisturb(); return;
-        case "settings": KCMUtils.KCMLauncher.openSystemSettings(""); break;
+        case "settings": openSettings(); break;
         }
         fan.close();
     }
@@ -218,6 +235,7 @@ PlasmoidItem {
         case "volume": KCMUtils.KCMLauncher.openSystemSettings("kcm_pulseaudio"); break;
         case "media": if (player) player.Raise(); break;
         case "notifications": markAllRead(); return;
+        case "settings": KCMUtils.KCMLauncher.openSystemSettings(""); break;
         default: return;
         }
         fan.close();

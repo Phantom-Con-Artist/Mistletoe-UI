@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "KWin/Script",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Description": "Push the pointer against the left screen edge to open the Mistletoe dial",
+        "EnabledByDefault": false,
+        "Icon": "compass",
+        "Id": "mistletoe-edge",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Edge",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "code/main.js"
+}

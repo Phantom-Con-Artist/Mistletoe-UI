@@ -18,6 +18,7 @@ done
 for d in "$ROOT"/window-decorations/aurorae/*/; do
     link "${d%/}" "$DATA/aurorae/themes/$(basename "$d")"
 done
+python3 "$ROOT/scripts/sync-shared.py"
 for p in "$ROOT"/plasma-widgets/*/package/; do
     id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["KPlugin"]["Id"])' "$p/metadata.json")"
     link "${p%/}" "$DATA/plasma/plasmoids/$id"
@@ -31,6 +32,14 @@ done
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
 done
+# KWin scripts (the left-edge dial trigger), enabled.
+for k in "$ROOT"/kwin-scripts/*/; do
+    id="$(basename "$k")"
+    link "${k%/}" "$DATA/kwin/scripts/$id"
+    kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" true
+done
+qdbus org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
+
 # The dial: menu bridge + its user service, and this machine's settings index.
 link "$ROOT/apps/mistletoe-menu/mistletoe-menu" "$HOME/.local/bin/mistletoe-menu"
 link "$ROOT/apps/mistletoe-menu/mistletoe-menu.service" "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/mistletoe-menu.service"

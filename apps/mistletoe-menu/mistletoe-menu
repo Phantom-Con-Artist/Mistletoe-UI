@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Mistletoe menu bridge: lets the radial dial read and drive any app's menus.
+"""Mistletoe menu bridge: lets the radial dial read and drive any app's menus
+(and lists places for its Places mode).
 
 KDE/Qt apps (and GTK apps with appmenu-gtk-module) export their menu bar
 over D-Bus (com.canonical.dbusmenu) once Plasma's AppMenu registrar is
@@ -9,13 +10,21 @@ org.kde.kappmenuview on the session bus, so `serve` holds that name.
   mistletoe-menu serve                     keep the registrar alive
   mistletoe-menu dump SERVICE PATH         print the menu tree as JSON
   mistletoe-menu click SERVICE PATH ID     activate one entry
+  mistletoe-menu places                    print places, recent folders,
+                                           drives and network as JSON
 
 The dial gets SERVICE and PATH for the active window from Plasma's task
 model and runs `dump` / `click` through Plasma's executable data source.
 """
 import json
+import os
+import sqlite3
+import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from gi.repository import Gio, GLib
 
@@ -83,6 +92,117 @@ def click(service, path, ident):
          GLib.Variant("(isvu)", (int(ident), "clicked", GLib.Variant("i", 0), int(time.time()))), "()")
 
 
+# ---- Places -------------------------------------------------------------
+DATA = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+
+
+def entry(label, icon, url, detail=""):
+    return {"label": label, "icon": icon, "url": url, "detail": detail}
+
+
+def pretty_path(path):
+    home = str(Path.home())
+    return "~" + path[len(home):] if path.startswith(home) else path
+
+
+def dolphin_places():
+    """Dolphin's Places panel (user-places.xbel): local ones, then the rest."""
+    local, other = [], []
+    try:
+        root = ET.parse(DATA / "user-places.xbel").getroot()
+    except (OSError, ET.ParseError):
+        return local, other
+    for b in root.iter("bookmark"):
+        meta = {m.tag.split("}")[-1]: m for m in b.iter()}
+        if meta.get("IsHidden") is not None and meta["IsHidden"].text == "true":
+            continue
+        if meta.get("OnlyInApp") is not None and meta["OnlyInApp"].text:
+            continue
+        href = b.get("href", "")
+        icon = meta["icon"].get("name") if "icon" in meta else "folder"
+        title = b.findtext("title") or href
+        if href.startswith("recentlyused:"):
+            continue  # the Recent group covers these
+        if href.startswith("file://"):
+            local.append(entry(title, icon, href, pretty_path(unquote(urlparse(href).path))))
+        else:
+            other.append(entry(title, icon, href, href))
+    return local, other
+
+
+def recent_folders(limit=12):
+    """Folders you used lately, from KDE's activity database: folders
+    themselves, or the folder of a file you opened."""
+    db = DATA / "kactivitymanagerd" / "resources" / "database"
+    out, seen = [], set()
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        rows = con.execute(
+            "SELECT targettedResource FROM ResourceScoreCache "
+            "WHERE targettedResource LIKE '/%' OR targettedResource LIKE 'file:%' "
+            "ORDER BY lastUpdate DESC LIMIT 400").fetchall()
+    except sqlite3.Error:
+        return out
+    for (res,) in rows:
+        path = unquote(urlparse(res).path) if res.startswith("file:") else res
+        folder = path if os.path.isdir(path) else os.path.dirname(path)
+        # Only your own folders (Home itself is already under Places) and
+        # removable drives; system paths like /dev are noise here.
+        mine = folder.startswith(str(Path.home()) + "/") or folder.startswith(("/run/media/", "/media/", "/mnt/"))
+        if not mine or folder in seen or not os.path.isdir(folder):
+            continue
+        if any(part.startswith(".") for part in Path(folder).parts):
+            continue  # hidden folders (caches, configs)
+        seen.add(folder)
+        out.append(entry(os.path.basename(folder) or folder, "folder", Path(folder).as_uri(), pretty_path(folder)))
+        if len(out) >= limit:
+            break
+    return out
+
+
+def drives():
+    """Mounted drives: the system disk and anything under /run/media, /media, /mnt."""
+    try:
+        raw = subprocess.run(["findmnt", "-J", "--real", "-b", "-o", "TARGET,SOURCE,FSTYPE,LABEL,SIZE,AVAIL"],
+                             capture_output=True, text=True, timeout=5).stdout
+        mounts = json.loads(raw)["filesystems"]
+    except Exception:
+        return []
+
+    def human(n):
+        n = float(n or 0)
+        for unit in "BKMGT":
+            if n < 1024 or unit == "T":
+                return f"{n:.0f} {unit}B" if unit != "B" else f"{n:.0f} B"
+            n /= 1024
+
+    out, seen = [], set()
+    for m in mounts:
+        target = m["target"]
+        removable = target.startswith(("/run/media/", "/media/", "/mnt/"))
+        if target != "/" and not removable:
+            continue
+        device = m["source"].split("[")[0]
+        if device in seen:
+            continue
+        seen.add(device)
+        name = m.get("label") or ("System" if target == "/" else os.path.basename(target))
+        out.append(entry(name, "drive-removable-media" if removable else "drive-harddisk",
+                         Path(target).as_uri(), f"{human(m.get('avail'))} free of {human(m.get('size'))}  ·  {m['fstype']}"))
+    return out
+
+
+def places():
+    local, other = dolphin_places()
+    groups = [
+        {"name": "Places", "icon": "user-home", "entries": local},
+        {"name": "Recent", "icon": "document-open-recent", "entries": recent_folders()},
+        {"name": "Devices", "icon": "drive-harddisk", "entries": drives()},
+        {"name": "Network & Trash", "icon": "folder-network", "entries": other},
+    ]
+    print(json.dumps([g for g in groups if g["entries"]]))
+
+
 def serve():
     Gio.bus_own_name_on_connection(bus(), "org.kde.kappmenuview", Gio.BusNameOwnerFlags.NONE, None, None)
     GLib.MainLoop().run()
@@ -96,6 +216,8 @@ def main(argv):
             dump(argv[1], argv[2])
         elif argv[:1] == ["click"] and len(argv) == 4:
             click(argv[1], argv[2], argv[3])
+        elif argv[:1] == ["places"]:
+            places()
         else:
             print(__doc__.strip(), file=sys.stderr)
             return 2

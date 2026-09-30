@@ -21,11 +21,14 @@ Item {
     property var entries: []        // [{ label, icon, detail, shortcut, hasChildren, enabled, checked }]
     property int categoryIndex: 0
     property int entryIndex: 0
-    property string mode: ""        // "App" or "Settings"
-    property string context: ""     // e.g. "KWrite" or "System Settings"
+    // Entry under the pointer (-1: none). Hover only highlights and fills
+    // the caption; it never turns the dial. Only the wheel and keys do.
+    property int hoverIndex: -1
+    property string mode: ""        // "App", "Places" or "Settings"
+    property var modes: []          // [{ name, enabled }] in Tab order
+    property string context: ""     // e.g. "KWrite", "Places", "System Settings"
     property string trail: ""       // submenu path, e.g. "File › Open Recent"
     property string status: ""      // loading / empty messages
-    property bool canSwitch: true
     readonly property alias query: queryInput.text
     readonly property alias keyTarget: queryInput
 
@@ -33,6 +36,7 @@ Item {
     signal entryActivated(int index)
     signal backRequested()
     signal modeToggled()
+    signal modeChosen(string name)
     signal closed()
 
     // ---- Palette --------------------------------------------------------
@@ -129,7 +133,10 @@ Item {
     }
 
     // Keep the focus inside the list whenever the list changes.
-    onEntriesChanged: entryIndex = Math.max(0, Math.min(entryIndex, entries.length - 1))
+    onEntriesChanged: {
+        entryIndex = Math.max(0, Math.min(entryIndex, entries.length - 1));
+        hoverIndex = -1;
+    }
 
     function stepEntry(d) {
         if (entries.length > 0) {
@@ -358,7 +365,13 @@ Item {
                 anchors.rightMargin: -(label.width + 12)
                 anchors.margins: -2
                 hoverEnabled: true
-                onEntered: dial.entryIndex = entry.index
+                onContainsMouseChanged: {
+                    if (containsMouse) {
+                        dial.hoverIndex = entry.index;
+                    } else if (dial.hoverIndex === entry.index) {
+                        dial.hoverIndex = -1;
+                    }
+                }
                 onClicked: dial.entryActivated(entry.index)
             }
         }
@@ -366,31 +379,32 @@ Item {
 
     // ---- Caption ------------------------------------------------------------
     Column {
-        readonly property var focused: dial.entries[dial.entryIndex] || ({})
+        readonly property var focused: dial.entries[dial.hoverIndex >= 0 ? dial.hoverIndex : dial.entryIndex] || ({})
         x: dial.outerRadius + 400 * dial.unit
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(560 * dial.unit, dial.width - x - 48)
         opacity: dial.veil
         spacing: 6
 
-        // Mode switch: APP · SETTINGS (Tab).
+        // Mode switch: APP · PLACES · SETTINGS (Tab cycles).
         Row {
             spacing: 18
             Repeater {
-                model: ["App", "Settings"]
+                model: dial.modes
                 Text {
-                    required property string modelData
-                    text: modelData.toUpperCase()
-                    color: modelData === dial.mode ? dial.gold : dial.tint(dial.bone, dial.canSwitch ? 0.4 : 0.15)
+                    required property var modelData
+                    readonly property bool current: modelData.name === dial.mode
+                    text: modelData.name.toUpperCase()
+                    color: current ? dial.gold : dial.tint(dial.bone, modelData.enabled ? 0.4 : 0.15)
                     font.family: dial.face
                     font.pixelSize: 11
                     font.letterSpacing: 3
-                    font.weight: modelData === dial.mode ? Font.DemiBold : Font.Normal
+                    font.weight: current ? Font.DemiBold : Font.Normal
                     MouseArea {
                         anchors.fill: parent
                         anchors.margins: -6
-                        enabled: dial.canSwitch && modelData !== dial.mode
-                        onClicked: dial.modeToggled()
+                        enabled: modelData.enabled && !parent.current
+                        onClicked: dial.modeChosen(modelData.name)
                     }
                 }
             }
@@ -447,7 +461,7 @@ Item {
             elide: Text.ElideRight
             text: dial.query
                 ? "⌕  " + dial.query + (dial.entries.length === 0 ? "   —  " + i18n("nothing found") : "   ·   " + i18np("%1 match", "%1 matches", dial.entries.length))
-                : i18n("Type to search  ·  ↑↓ scroll  ·  ←→ category  ·  Enter open  ·  Tab switch  ·  Esc close")
+                : i18n("Type to search  ·  ↑↓ scroll  ·  ←→ category  ·  Enter open  ·  Tab mode  ·  Esc close")
             color: dial.query ? dial.bone : dial.tint(dial.bone, 0.4)
             font.family: dial.face
             font.pixelSize: dial.query ? 15 : 11
@@ -481,9 +495,7 @@ Item {
             case Qt.Key_Enter: dial.entryActivated(dial.entryIndex); break;
             case Qt.Key_Tab:
             case Qt.Key_Backtab:
-                if (dial.canSwitch) {
-                    dial.modeToggled();
-                }
+                dial.modeToggled();
                 break;
             case Qt.Key_Backspace:
                 if (text.length > 0 || !dial.trail) {
