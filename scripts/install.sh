@@ -46,5 +46,7 @@ link "$ROOT/apps/mistletoe-menu/mistletoe-menu.service" "${XDG_CONFIG_HOME:-$HOM
 systemctl --user daemon-reload
 systemctl --user enable --now mistletoe-menu.service >/dev/null 2>&1 && echo "menu bridge running"
 python3 "$ROOT/scripts/gen-settings-index.py" "$DATA/mistletoe/settings.json" | head -1
-link "$ROOT/fonts/Exo2" "$DATA/fonts/Exo2"
+for f in "$ROOT"/fonts/*/; do
+    link "${f%/}" "$DATA/fonts/$(basename "$f")"
+done
 fc-cache -f "$DATA/fonts" >/dev/null && echo "font cache refreshed"
