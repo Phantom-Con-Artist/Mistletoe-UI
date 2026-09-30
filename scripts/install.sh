@@ -15,5 +15,9 @@ done
 for d in "$ROOT"/window-decorations/aurorae/*/; do
     link "${d%/}" "$DATA/aurorae/themes/$(basename "$d")"
 done
+for p in "$ROOT"/plasma-widgets/*/package/; do
+    id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["KPlugin"]["Id"])' "$p/metadata.json")"
+    link "${p%/}" "$DATA/plasma/plasmoids/$id"
+done
 link "$ROOT/fonts/Exo2" "$DATA/fonts/Exo2"
 fc-cache -f "$DATA/fonts" >/dev/null && echo "font cache refreshed"
