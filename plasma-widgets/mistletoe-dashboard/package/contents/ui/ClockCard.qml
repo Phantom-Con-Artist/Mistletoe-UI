@@ -15,6 +15,8 @@ Item {
     required property var dash
 
     readonly property color shade: Qt.rgba(0, 0, 0, 0.35)
+    // Everything scales with the card: 112px time at the default 352px.
+    readonly property real k: Math.max(0.45, Math.min(1.8, Math.min(width / 352, height / 224)))
 
     property date now: new Date()
     Timer {
@@ -37,8 +39,8 @@ Item {
             style: Text.Raised
             styleColor: card.shade
             font.family: "Exo 2"
-            font.pixelSize: 14
-            font.letterSpacing: 7
+            font.pixelSize: Math.round(14 * card.k)
+            font.letterSpacing: 7 * card.k
             font.weight: Font.Medium
         }
         Text {
@@ -48,7 +50,7 @@ Item {
             style: Text.Raised
             styleColor: card.shade
             font.family: "Exo 2"
-            font.pixelSize: 112
+            font.pixelSize: Math.round(112 * card.k)
             font.weight: Font.ExtraLight
             font.features: { "tnum": 1 }
         }
@@ -71,13 +73,13 @@ Item {
             }
         }
         Text {
-            topPadding: 12
+            topPadding: Math.round(12 * card.k)
             text: Qt.formatDate(card.now, "d MMMM yyyy")
             color: card.dash.tint(card.dash.bone, 0.75)
             style: Text.Raised
             styleColor: card.shade
             font.family: "Exo 2"
-            font.pixelSize: 17
+            font.pixelSize: Math.round(17 * card.k)
             font.weight: Font.Light
             font.letterSpacing: 1
         }

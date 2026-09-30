@@ -47,6 +47,12 @@ ColumnLayout {
     }
 
     readonly property int samples: 60           // 60 x 2 s = two minutes
+    // Headings, gaps and two lines of tips take about 230px; of the rest,
+    // five app rows come first, then the graph grows (90-260px), then any
+    // height left over becomes more rows.
+    readonly property real flexible: height - 230
+    readonly property real graphHeight: Math.max(90, Math.min(260, flexible - 5 * 40))
+    readonly property int appsFit: Math.max(3, Math.min(10, Math.floor((flexible - graphHeight) / 40)))
     property var cpuHistory: []
     property var memHistory: []
     property var apps: []                        // top 5 by CPU
@@ -87,7 +93,7 @@ ColumnLayout {
         }
         const byCpu = rows.slice().sort((a, b) => (b.cpu - a.cpu) || (b.mem - a.mem));
         const byMem = rows.slice().sort((a, b) => b.mem - a.mem);
-        apps = byCpu.slice(0, 5);
+        apps = byCpu.slice(0, appsFit);
         tips = makeTips(byCpu, byMem);
     }
 
@@ -151,7 +157,7 @@ ColumnLayout {
         Canvas {
             id: graph
             Layout.fillWidth: true
-            Layout.preferredHeight: 180
+            Layout.preferredHeight: card.graphHeight
             renderStrategy: Canvas.Cooperative
 
             readonly property var cpu: card.cpuHistory

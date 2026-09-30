@@ -23,13 +23,13 @@ Item {
     readonly property real radius: 170
     readonly property real stepAngle: 11
     readonly property int reach: 3
-    readonly property real iconCenter: 34
-    readonly property real iconSide: 24
+    readonly property real iconCenter: 40
+    readonly property real iconSide: 28
     readonly property real topPad: 10
 
     readonly property real halfSpan: radius * Math.sin((reach + 0.5) * stepAngle * Math.PI / 180)
     width: Math.ceil(2 * halfSpan + iconSide + 36)
-    height: 86
+    height: 96
 
     property string hoverName: ""
 
@@ -45,14 +45,8 @@ Item {
                         topPad + iconCenter / 2 + radius * (1 - Math.cos(a)));
     }
 
-    // Matte plate: the arc floats over app content, so it needs its own
-    // ground to stay readable (no blur by design).
-    Shard {
-        anchors.fill: parent
-        cut: 12
-        fill: Qt.rgba(arc.ink.r, arc.ink.g, arc.ink.b, 0.96)
-        rim: Qt.rgba(arc.gold.r, arc.gold.g, arc.gold.b, 0.5)
-    }
+    // No plate: the icons and the gold orbit float straight over whatever
+    // is behind them; the name carries a 1px raised shadow for legibility.
 
     WheelHandler {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -139,8 +133,10 @@ Item {
         elide: Text.ElideRight
         text: (arc.hoverName || arc.activeName).toUpperCase()
         color: arc.gold
+        style: Text.Raised
+        styleColor: Qt.rgba(0, 0, 0, 0.6)
         font.family: "Exo 2"
-        font.pixelSize: 9
+        font.pixelSize: 10
         font.letterSpacing: 1.5
         font.weight: Font.Medium
     }

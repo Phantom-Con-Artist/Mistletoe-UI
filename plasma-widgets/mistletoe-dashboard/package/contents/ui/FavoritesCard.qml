@@ -27,10 +27,10 @@ ColumnLayout {
         bone: card.dash.bone
     }
 
-    // Cells stretch so each row spans the card edge to edge.
+    // As many ~56px columns as fit; cells stretch so each row spans the card.
     Grid {
         id: grid
-        readonly property int columns_: 5
+        readonly property int columns_: Math.max(1, Math.floor((width + spacing) / (56 + spacing)))
         readonly property real cell: Math.max(32, Math.floor((width - (columns_ - 1) * spacing) / columns_))
         Layout.fillWidth: true
         columns: columns_

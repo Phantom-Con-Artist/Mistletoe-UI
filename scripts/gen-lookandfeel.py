@@ -89,6 +89,8 @@ function addDashboard(desktop, geo) {
     }
     // The power card is the big one: live graph, hungriest apps, tips.
     card("hungry", geo.width - M - 448, M, 448, 576);
+    // The media card (YouTube / Music) is optional: add "Mistletoe Dashboard"
+    // from the widget list and set its card to "media".
 }
 
 // ---- Desktop ------------------------------------------------------------

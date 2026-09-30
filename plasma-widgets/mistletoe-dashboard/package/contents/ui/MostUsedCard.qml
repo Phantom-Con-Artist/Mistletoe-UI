@@ -12,6 +12,9 @@ ColumnLayout {
 
     spacing: 2
 
+    // Rows that fit under the heading (each row is 38px + 2px spacing).
+    readonly property int rowsFit: Math.max(1, Math.min(12, Math.floor((height - 32) / 40)))
+
     Kicker.RecentUsageModel {
         id: mostUsed
         ordering: 1 // Popular
@@ -31,7 +34,7 @@ ColumnLayout {
             required property int index
             required property var model
             Layout.fillWidth: true
-            visible: index < 5
+            visible: index < card.rowsFit
             rank: index + 1
             iconSource: model.decoration
             title: model.display
