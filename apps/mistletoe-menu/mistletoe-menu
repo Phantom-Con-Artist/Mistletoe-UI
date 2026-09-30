@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Mistletoe menu bridge: lets the radial dial read and drive any app's menus.
+
+KDE/Qt apps (and GTK apps with appmenu-gtk-module) export their menu bar
+over D-Bus (com.canonical.dbusmenu) once Plasma's AppMenu registrar is
+running. Plasma starts that registrar only while a "menu view" owns
+org.kde.kappmenuview on the session bus, so `serve` holds that name.
+
+  mistletoe-menu serve                     keep the registrar alive
+  mistletoe-menu dump SERVICE PATH         print the menu tree as JSON
+  mistletoe-menu click SERVICE PATH ID     activate one entry
+
+The dial gets SERVICE and PATH for the active window from Plasma's task
+model and runs `dump` / `click` through Plasma's executable data source.
+"""
+import json
+import sys
+import time
+
+from gi.repository import Gio, GLib
+
+IFACE = "com.canonical.dbusmenu"
+
+
+def bus():
+    return Gio.bus_get_sync(Gio.BusType.SESSION, None)
+
+
+def call(service, path, method, params, reply):
+    return bus().call_sync(service, path, IFACE, method, params,
+                           GLib.VariantType.new(reply), Gio.DBusCallFlags.NONE, 3000, None)
+
+
+KEYS = {"Control": "Ctrl", "Super": "Meta", "Return": "Enter", "Escape": "Esc"}
+
+
+def pretty_shortcut(shortcut):
+    """[["Control", "Shift", "N"]] -> "Ctrl+Shift+N" (first binding only)."""
+    if not shortcut or not shortcut[0]:
+        return ""
+    return "+".join(KEYS.get(k, k) for k in shortcut[0])
+
+
+def node(item):
+    """(id, props, children) -> {id, label, icon, enabled, checked, children}."""
+    ident, props, children = item
+    label = props.get("label", "")
+    # Mnemonics: "&File" -> "File", "&&" -> "&".
+    label = label.replace("&&", "\0").replace("&", "").replace("_", "").replace("\0", "&")
+    kids = [node(c) for c in children]
+    return {
+        "id": ident,
+        "label": label,
+        "icon": props.get("icon-name", ""),
+        "enabled": props.get("enabled", True),
+        "visible": props.get("visible", True),
+        "separator": props.get("type", "") == "separator",
+        "checked": props.get("toggle-state", -1) == 1,
+        "shortcut": pretty_shortcut(props.get("shortcut")),
+        "children": [k for k in kids if k["visible"] and not k["separator"] and k["label"]],
+    }
+
+
+def prepare(service, path, ident):
+    # Menus are often built lazily; ask the app to fill a submenu first.
+    try:
+        call(service, path, "AboutToShow", GLib.Variant("(i)", (ident,)), "(b)")
+    except GLib.Error:
+        pass
+
+
+def dump(service, path):
+    prepare(service, path, 0)
+    top = call(service, path, "GetLayout", GLib.Variant("(iias)", (0, 1, [])), "(u(ia{sv}av))").unpack()[1]
+    for child in top[2]:
+        prepare(service, path, child[0])
+    layout = call(service, path, "GetLayout", GLib.Variant("(iias)", (0, -1, [])), "(u(ia{sv}av))").unpack()[1]
+    print(json.dumps(node(layout)["children"]))
+
+
+def click(service, path, ident):
+    call(service, path, "Event",
+         GLib.Variant("(isvu)", (int(ident), "clicked", GLib.Variant("i", 0), int(time.time()))), "()")
+
+
+def serve():
+    Gio.bus_own_name_on_connection(bus(), "org.kde.kappmenuview", Gio.BusNameOwnerFlags.NONE, None, None)
+    GLib.MainLoop().run()
+
+
+def main(argv):
+    try:
+        if argv[:1] == ["serve"]:
+            serve()
+        elif argv[:1] == ["dump"] and len(argv) == 3:
+            dump(argv[1], argv[2])
+        elif argv[:1] == ["click"] and len(argv) == 4:
+            click(argv[1], argv[2], argv[3])
+        else:
+            print(__doc__.strip(), file=sys.stderr)
+            return 2
+    except GLib.Error as e:
+        print(json.dumps({"error": e.message}))
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

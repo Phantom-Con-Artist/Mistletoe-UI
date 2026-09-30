@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "Windows and Tasks",
+        "Description": "A radial dial from the left screen edge: the active app's menus and every System Settings page, scrollable and searchable",
+        "Icon": "compass",
+        "Id": "org.mistletoe.dial",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Dial",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

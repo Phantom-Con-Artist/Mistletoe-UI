@@ -31,5 +31,11 @@ done
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
 done
+# The dial: menu bridge + its user service, and this machine's settings index.
+link "$ROOT/apps/mistletoe-menu/mistletoe-menu" "$HOME/.local/bin/mistletoe-menu"
+link "$ROOT/apps/mistletoe-menu/mistletoe-menu.service" "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/mistletoe-menu.service"
+systemctl --user daemon-reload
+systemctl --user enable --now mistletoe-menu.service >/dev/null 2>&1 && echo "menu bridge running"
+python3 "$ROOT/scripts/gen-settings-index.py" "$DATA/mistletoe/settings.json" | head -1
 link "$ROOT/fonts/Exo2" "$DATA/fonts/Exo2"
 fc-cache -f "$DATA/fonts" >/dev/null && echo "font cache refreshed"

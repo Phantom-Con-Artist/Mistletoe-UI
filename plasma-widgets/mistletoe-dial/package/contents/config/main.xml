@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+    <kcfgfile name=""/>
+    <group name="General">
+        <!-- Installed by scripts/install.sh. -->
+        <entry name="bridge" type="String">
+            <default>$HOME/.local/bin/mistletoe-menu</default>
+        </entry>
+        <entry name="settingsIndex" type="String">
+            <default>$HOME/.local/share/mistletoe/settings.json</default>
+        </entry>
+    </group>
+</kcfg>

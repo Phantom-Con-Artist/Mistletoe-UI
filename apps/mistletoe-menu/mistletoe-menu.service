@@ -1,0 +1,11 @@
+[Unit]
+Description=Mistletoe menu bridge (keeps Plasma's AppMenu registrar alive for the dial)
+PartOf=graphical-session.target
+After=plasma-kded6.service
+
+[Service]
+ExecStart=%h/.local/bin/mistletoe-menu serve
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
