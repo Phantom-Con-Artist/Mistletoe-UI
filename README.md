@@ -29,7 +29,8 @@ one built on stock KDE Plasma 6 (developed on Fedora 44, Plasma 6.7, Wayland):
 | **Lock screen** | Cinematic: the clock on the left, one password shard low in the centre, branding top right. |
 | **Splash and leave screens** | Log-in, splash, lock and the sleep / restart / shut-down prompt are one scene: your wallpaper under a matte veil, the clock on the left, branding top right. Only the centre changes: the password shard, a rotary dial that turns one detent per start-up stage, or the leave actions as gems. |
 | **Typefaces** | Two original fonts made for Mistletoe, **Ad Astra** (futuristic, faceted) and **Mythril** (whimsical, soft), alongside Exo 2, and a switch to change which goes where. |
-| **Apps** | Colour schemes, window frames, Konsole profiles and a sharp flat layer for GTK apps, so native apps match. |
+| **Apps** | Colour schemes, flat window frames with plain buttons, a Kvantum theme per edition for the controls inside Qt apps, Konsole profiles and a sharp flat layer for GTK apps, so native apps match. |
+| **Window switching** | `Alt+Tab` is a rotary dial: the windows ride a ring, the chosen one turns up to the top and shows in the middle. Minimized windows fold down into the middle of the strip. |
 
 <p align="center">
   <img src="docs/images/edition-neon.jpg" alt="Mistletoe Neon" width="440">
@@ -54,7 +55,8 @@ one built on stock KDE Plasma 6 (developed on Fedora 44, Plasma 6.7, Wayland):
 
 **Requirements:** KDE Plasma 6 on Wayland, Python 3 with Pillow and PyGObject
 (both are on a standard Fedora KDE install), and `kwriteconfig6`/`qdbus`
-(part of Plasma).
+(part of Plasma). Optional: `kvantum` (`sudo dnf install kvantum`) for the
+Mistletoe look inside Qt apps; without it they use Breeze.
 
 ```bash
 git clone <this repo> ~/Development/KDE-Workshop
@@ -138,6 +140,10 @@ menus) and what to do about any gaps.
 | `lockscreen/` | Lock screen source; packaged as `shells/org.mistletoe.lockscreen`. |
 | `apps/mistletoe-menu/` | The bridge the widgets call: reads and clicks app menus, lists places, switches editions and fonts, measures wallpaper brightness, keeps the lock screen in sync. Plus its user service. |
 | `kwin-scripts/mistletoe-edge/` | KWin helper: floating cards stay above and on screen. |
+| `kwin-effects/mistletoe-minimize/` | KWin effect: minimized windows fold into the strip. |
+| `kwin-tabbox/mistletoe-dial/` | The rotary `Alt+Tab` switcher. |
+| `kvantum/` | Generated Kvantum themes, one per edition (needs the `kvantum` package). |
+| `plymouth/mistletoe/` | Optional boot screen; `sudo bash scripts/install-plymouth.sh` installs it. |
 | `konsole/`, `gtk/` | Konsole profiles and colour schemes; the GTK 3/4 layer. |
 | `fonts/` | Ad Astra and Mythril (original, OFL) and Exo 2 (OFL). |
 | `wallpapers/` | Vigil, Raven, Colossus, Wanderer, Neon and Ember. |
@@ -154,7 +160,8 @@ the scripts rather than editing them by hand:
 | `gen-svgs.py` | Plasma style frames |
 | `gen-aurorae.py` | window decorations |
 | `gen-konsole.py` | Konsole schemes and profiles |
-| `gen-lookandfeel.py` | Global Themes, the layout script and the lock screen package |
+| `gen-lookandfeel.py` | Global Themes, the layout script, the splash and leave screens, and the lock screen package |
+| `gen-kvantum.py` | Kvantum themes, recoloured from Kvantum's KvAdapta |
 | `gen-settings-index.py` | the dial's index of settings pages (per machine, at install) |
 | `build-fonts.py` | Ad Astra and Mythril (needs fonttools + skia-pathops) |
 | `build-logo.py` | the logo (needs fonttools + skia-pathops, ImageMagick) |
