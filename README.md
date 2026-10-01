@@ -29,6 +29,7 @@ one built on stock KDE Plasma 6 (developed on Fedora 44, Plasma 6.7, Wayland):
 | **Lock screen** | Cinematic: the clock on the left, one password shard low in the centre, branding top right. |
 | **Splash and leave screens** | Log-in, splash, lock and the sleep / restart / shut-down prompt are one scene: your wallpaper under a matte veil, the clock on the left, branding top right. Only the centre changes: the password shard, a rotary dial that turns one detent per start-up stage, or the leave actions as gems. |
 | **Typefaces** | Two original fonts made for Mistletoe, **Ad Astra** (futuristic, faceted) and **Mythril** (whimsical, soft), alongside Exo 2, and a switch to change which goes where. |
+| **Icons** | Optional: the Papirus icon set, with folders in each edition's accent. |
 | **Apps** | Colour schemes, flat window frames with plain buttons, a Kvantum theme per edition for the controls inside Qt apps, Konsole profiles and a sharp flat layer for GTK apps, so native apps match. |
 | **Window switching** | `Alt+Tab` is a rotary dial: the windows ride a ring, the chosen one turns up to the top and shows in the middle. Minimized windows fold down into the middle of the strip. |
 
@@ -72,7 +73,14 @@ plasma-apply-lookandfeel --apply org.mistletoe.dark.desktop --resetLayout
 
 # 3. Style the native apps: fonts, toolbars, Konsole, lock screen, GTK, Firefox.
 bash scripts/apply-apps.sh
+
+# 4. Optional: icons. Downloads Papirus (about 33 MB, no root) and builds the
+#    Mistletoe icon themes, which give each edition folders in its accent.
+bash scripts/install-icons.sh
 ```
+
+Log out and back in once after installing: the Mistletoe lock screen is only
+picked up when the session starts.
 
 Optional: for GTK apps' menus to appear in the dial, run
 `sudo dnf install appmenu-gtk3-module`, then log out and back in.
@@ -162,6 +170,7 @@ the scripts rather than editing them by hand:
 | `gen-konsole.py` | Konsole schemes and profiles |
 | `gen-lookandfeel.py` | Global Themes, the layout script, the splash and leave screens, and the lock screen package |
 | `gen-kvantum.py` | Kvantum themes, recoloured from Kvantum's KvAdapta |
+| `gen-icons.py` | the Mistletoe icon themes in `~/.local/share/icons` (Papirus with accent folders; `install-icons.sh` downloads Papirus first) |
 | `gen-settings-index.py` | the dial's index of settings pages (per machine, at install) |
 | `build-fonts.py` | Ad Astra and Mythril (needs fonttools + skia-pathops) |
 | `build-logo.py` | the logo (needs fonttools + skia-pathops, ImageMagick) |
@@ -179,3 +188,8 @@ Designed and built by Subhradeep Sarkar. Widgets, scripts and the other code
 are GPL-2.0-or-later; the Plasma styles are LGPL; the Ad Astra, Mythril and
 Exo 2 fonts are under the SIL Open Font License 1.1 (see `fonts/*/OFL.txt`).
 The wallpapers and the logo are the author's own artwork.
+
+Third-party work Mistletoe builds on: the Kvantum themes are recolourings of
+**KvAdapta** by Tsu Jan (GPL), and the optional icon themes sit on top of
+**Papirus** by the Papirus Development Team (GPL-3), which is downloaded at
+install time and not included here.

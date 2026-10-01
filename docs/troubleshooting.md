@@ -45,6 +45,11 @@ out and back in after installing. Check that
 `scripts/install.sh`. To see the Mistletoe screen without locking:
 `PLASMA_DEFAULT_SHELL=org.mistletoe.lockscreen timeout 9 /usr/libexec/kscreenlocker_greet --testing`.
 
+**An icon turned into a folder (or icons look wrong).** Rebuild the icon
+themes with `python3 scripts/gen-icons.py`, or go back to Breeze under System
+Settings > Colors & Themes > Icons. `bash scripts/install-icons.sh --remove`
+removes Papirus and the Mistletoe icon themes.
+
 **Undo everything.**
 
 ```bash
