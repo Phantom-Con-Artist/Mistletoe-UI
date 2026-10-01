@@ -47,6 +47,21 @@ for k in "$ROOT"/kwin-scripts/*/; do
     link "${k%/}" "$DATA/kwin/scripts/$id"
     kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" true
 done
+# KWin effects (the fold-into-the-strip minimize animation), enabled. It
+# replaces Squash, which has no task manager icon to aim at here.
+for k in "$ROOT"/kwin-effects/*/; do
+    [[ -f "$k/metadata.json" ]] || continue
+    id="$(basename "$k")"
+    link "${k%/}" "$DATA/kwin/effects/$id"
+    kwriteconfig6 --file kwinrc --group Plugins --key "${id}Enabled" true
+done
+kwriteconfig6 --file kwinrc --group Plugins --key squashEnabled false
+# The rotary Alt+Tab switcher. (Pick another under System Settings > Window
+# Management > Task Switcher to go back.)
+for k in "$ROOT"/kwin-tabbox/*/; do
+    link "${k%/}" "$DATA/kwin/tabbox/$(basename "$k")"
+done
+kwriteconfig6 --file kwinrc --group TabBox --key LayoutName mistletoe-dial
 qdbus org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
 
 # The dial: menu bridge + its user service, and this machine's settings index.

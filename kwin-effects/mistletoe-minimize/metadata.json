@@ -1,0 +1,21 @@
+{
+    "KPackageStructure": "KWin/Effect",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Category": "Appearance",
+        "Description": "Minimized windows fold down into the middle of the Mistletoe strip, where the active app lives, and unfold from it",
+        "EnabledByDefault": false,
+        "Icon": "preferences-system-windows-effect-squash",
+        "Id": "mistletoe-minimize",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Minimize",
+        "Version": "0.1.0"
+    },
+    "X-KDE-Ordering": 60,
+    "X-KWin-Exclusive-Category": "minimize",
+    "X-Plasma-API": "javascript"
+}

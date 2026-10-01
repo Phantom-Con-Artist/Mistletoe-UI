@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "KWin/WindowSwitcher",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Subhradeep Sarkar"
+            }
+        ],
+        "Description": "A rotary window switcher: the windows ride a dial, the chosen one turns up to the stop at the top and shows in the middle",
+        "Icon": "preferences-system-windows-switcher-thumbnail-grid",
+        "Id": "mistletoe-dial",
+        "License": "GPL-2.0-or-later",
+        "Name": "Mistletoe Dial",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API": "declarativeappletscript"
+}
