@@ -15,6 +15,7 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.ksysguard.process as Process
 import org.kde.ksysguard.sensors as Sensors
+import org.kde.taskmanager as TaskManager
 import org.kde.plasma.plasma5support as P5Support
 
 ColumnLayout {
@@ -44,6 +45,96 @@ ColumnLayout {
     Process.ApplicationDataModel {
         id: appStats
         enabledAttributes: ["appName", "iconName", "usage", "memory"]
+    }
+    // The application model only knows apps running in their own systemd
+    // scope. Anything else with a window (started from a terminal, wrappers,
+    // freshly installed apps) is totalled from its process tree instead, the
+    // way the strip does it.
+    Process.ProcessDataModel {
+        id: procs
+        enabledAttributes: ["pid", "usage", "memory"]
+    }
+    TaskManager.TasksModel {
+        id: tasks
+        groupMode: TaskManager.TasksModel.GroupApplications
+        filterByVirtualDesktop: false
+        filterByActivity: false
+        filterByScreen: false
+    }
+
+    // Total CPU and memory (KiB) of one process row and everything below it.
+    function subtree(parentIndex, row) {
+        const idx = procs.index(row, 0, parentIndex);
+        let cpu = Number(procs.data(procs.index(row, 1, parentIndex), Process.ProcessDataModel.Value)) || 0;
+        let mem = Number(procs.data(procs.index(row, 2, parentIndex), Process.ProcessDataModel.Value)) || 0;
+        for (let c = 0; c < procs.rowCount(idx); ++c) {
+            const sub = subtree(idx, c);
+            cpu += sub.cpu;
+            mem += sub.mem;
+        }
+        return { cpu: cpu, mem: mem };
+    }
+    function findPid(parentIndex, pid) {
+        for (let r = 0; r < procs.rowCount(parentIndex); ++r) {
+            if (Number(procs.data(procs.index(r, 0, parentIndex), Qt.DisplayRole)) === pid) {
+                return subtree(parentIndex, r);
+            }
+            const deeper = findPid(procs.index(r, 0, parentIndex), pid);
+            if (deeper) {
+                return deeper;
+            }
+        }
+        return null;
+    }
+    function formatMem(kib) {
+        const units = ["KB", "MB", "GB", "TB"];
+        let v = kib;
+        let u = 0;
+        while (v >= 1024 && u < units.length - 1) {
+            v /= 1024;
+            ++u;
+        }
+        return (v < 10 && u > 0 ? v.toFixed(1) : Math.round(v)) + " " + units[u];
+    }
+    // Apps with windows that the application model doesn't list.
+    function windowApps(known) {
+        const out = [];
+        for (let i = 0; i < tasks.count; ++i) {
+            const row = tasks.makeModelIndex(i);
+            const appId = String(tasks.data(row, TaskManager.AbstractTasksModel.AppId) || "");
+            const name = String(tasks.data(row, TaskManager.AbstractTasksModel.AppName) || tasks.data(row, Qt.DisplayRole) || "");
+            if (!name || tasks.data(row, TaskManager.AbstractTasksModel.IsLauncher) || /plasmashell/.test(appId)
+                    || known[name.toLowerCase()]) {
+                continue;
+            }
+            const pids = [];
+            const add = (index) => {
+                const pid = Number(tasks.data(index, TaskManager.AbstractTasksModel.AppPid)) || 0;
+                if (pid > 0 && pids.indexOf(pid) < 0) {
+                    pids.push(pid);
+                }
+            };
+            add(row);
+            for (let c = 0; c < tasks.rowCount(row); ++c) {
+                add(tasks.makeModelIndex(i, c));
+            }
+            let cpu = 0;
+            let mem = 0;
+            let found = false;
+            for (const pid of pids) {
+                const total = findPid(procs.index(-1, -1), pid);
+                if (total) {
+                    found = true;
+                    cpu += total.cpu;
+                    mem += total.mem;
+                }
+            }
+            if (found) {
+                known[name.toLowerCase()] = true;
+                out.push({ name: name, icon: tasks.data(row, Qt.DecorationRole), cpu: cpu, mem: mem, memText: formatMem(mem) });
+            }
+        }
+        return out;
     }
 
     readonly property int samples: 60           // 60 x 2 s = two minutes
@@ -79,27 +170,25 @@ ColumnLayout {
 
         // Apps. Rebuilt on a timer rather than bound to the model, which
         // changes on every sample and would churn the delegates.
-        const rows = [];
+        const all = [];
+        const known = {};
         for (let r = 0; r < appStats.rowCount(); ++r) {
             const name = clean(appStats.data(appStats.index(r, 0), Qt.DisplayRole));
             if (!name) {
                 continue;
             }
-            const cpu = Number(appStats.data(appStats.index(r, 2), Process.ProcessDataModel.Value)) || 0;
-            const mem = Number(appStats.data(appStats.index(r, 3), Process.ProcessDataModel.Value)) || 0;
-            // Only apps that are using something worth a row: idle
-            // background helpers would just be a list of zeros.
-            if (cpu < 0.5 && mem < 200 * 1024) {    // KiB
-                continue;
-            }
-            rows.push({
+            known[name.toLowerCase()] = true;
+            all.push({
                 name: name,
                 icon: String(appStats.data(appStats.index(r, 1), Qt.DisplayRole) || "application-x-executable"),
-                cpu: cpu,
-                mem: mem,
+                cpu: Number(appStats.data(appStats.index(r, 2), Process.ProcessDataModel.Value)) || 0,
+                mem: Number(appStats.data(appStats.index(r, 3), Process.ProcessDataModel.Value)) || 0,
                 memText: shortMem(appStats.data(appStats.index(r, 3), Qt.DisplayRole))
             });
         }
+        // Only apps that are using something worth a row: idle background
+        // helpers would just be a list of zeros.
+        const rows = all.concat(windowApps(known)).filter(a => a.cpu >= 0.5 || a.mem >= 200 * 1024);   // KiB
         const byCpu = rows.slice().sort((a, b) => (b.cpu - a.cpu) || (b.mem - a.mem));
         const byMem = rows.slice().sort((a, b) => b.mem - a.mem);
         tips = makeTips(byCpu, byMem);
