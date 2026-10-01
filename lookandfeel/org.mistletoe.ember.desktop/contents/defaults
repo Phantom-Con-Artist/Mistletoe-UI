@@ -12,7 +12,7 @@ activeFont=Mistletoe Text,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 widgetStyle=kvantum
 
 [kdeglobals][Icons]
-Theme=breeze-dark
+Theme=Mistletoe-Ember
 
 [plasmarc][Theme]
 name=mistletoe-ember

@@ -37,9 +37,13 @@ reset it: its saved position is ignored unless it is on screen.
 wallpaper. Edition changes replace custom wallpapers; choosing a custom image
 keeps it until the next edition change. The bridge watches System Settings too.
 
-**The lock screen looks like Plasma's default.** Check
-`kreadconfig6 --file kscreenlockerrc --group Greeter --key Theme` prints
-`org.mistletoe.lockscreen`, and re-run `scripts/apply-apps.sh`.
+**The lock screen looks like Plasma's default.** The locker only uses the
+Mistletoe screen when KWin was started with `PLASMA_DEFAULT_SHELL` set, so log
+out and back in after installing. Check that
+`systemctl --user show plasma-kwin_wayland.service -p Environment` prints
+`PLASMA_DEFAULT_SHELL=org.mistletoe.lockscreen`; if not, re-run
+`scripts/install.sh`. To see the Mistletoe screen without locking:
+`PLASMA_DEFAULT_SHELL=org.mistletoe.lockscreen timeout 9 /usr/libexec/kscreenlocker_greet --testing`.
 
 **Undo everything.**
 

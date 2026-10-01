@@ -92,8 +92,9 @@ fi
 w konsolerc "Desktop Entry" DefaultProfile "Mistletoe$VARIANT.profile"
 w konsolerc KonsoleWindow ShowMenuBarByDefault false
 
-# Lock screen: the Mistletoe greeter, over the Mistletoe wallpaper (the
-# dial's wallpaper sync keeps it matching the desktop afterwards).
+# Lock screen wallpaper: the Mistletoe one (the dial's wallpaper sync keeps
+# it matching the desktop afterwards). Which lock screen is used is set by
+# install.sh; the Theme key below is only read by older Plasma versions.
 w kscreenlockerrc Greeter Theme org.mistletoe.lockscreen
 kwriteconfig6 --file kscreenlockerrc --group Greeter --group Wallpaper --group org.kde.image --group General \
     --key Image "file://${XDG_DATA_HOME:-$HOME/.local/share}/wallpapers/Mistletoe"

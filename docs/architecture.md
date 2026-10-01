@@ -29,7 +29,7 @@ per-user, touches nothing system-wide and can be switched off like any theme.
 | Window frames | `window-decorations/aurorae/mistletoe-*` | Aurorae SVG theme: slim title bar, chamfered corner, gem buttons, real Gaussian shadows. |
 | Global Theme | `lookandfeel/org.mistletoe.*.desktop` | Sets colours, style, frames, icons, cursor, fonts (the Text role) and wallpaper; its layout script builds the strip and the cards. Also carries the start-up splash (`contents/splash`) and the leave screen (`contents/logout`); both are built on one generated scene that mirrors the lock screen, with the edition's colours written in and the wallpaper and your name read from `~/.local/share/mistletoe/Appearance.qml` (kept by the bridge's `lock-settings`). |
 | Fonts | `fonts/`, fontconfig | Three roles (`Mistletoe Display`, `Accent`, `Text`) are fontconfig aliases written by `mistletoe-menu fonts`. Every surface names a role, never a family, so a switch changes everything at once. |
-| Lock screen | `shells/org.mistletoe.lockscreen` | kscreenlocker loads its UI from a Plasma *shell* package chosen in `kscreenlockerrc [Greeter] Theme`. It is installed as a copy so the bridge can write `backdrop.js` (text contrast, distro line) into it. |
+| Lock screen | `shells/org.mistletoe.lockscreen` | kscreenlocker loads its UI from the Plasma *shell* package named by `PLASMA_DEFAULT_SHELL` (Plasma 6.7 ignores `kscreenlockerrc [Greeter] Theme`). `install.sh` sets that variable for KWin's service only, through a systemd drop-in: KWin starts the locker, while plasmashell must keep the desktop shell. Anything the package lacks falls back to the desktop shell. It is installed as a copy so the bridge can write `backdrop.js` (text contrast, distro line) into it. |
 
 ## Behaviour
 

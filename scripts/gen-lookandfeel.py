@@ -21,16 +21,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "lookandfeel"
 
+# Icons: the Mistletoe icon themes (scripts/gen-icons.py) are Papirus with the
+# folders in each edition's accent; without Papirus they fall back to Breeze.
 # The Mistletoe Text role (a fontconfig alias, Exo 2 by default; see
 # `mistletoe-menu fonts`) for the UI; monospace stays the system default.
 FONT = "Mistletoe Text,{size},-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
 VARIANTS = {
-    "dark": dict(name="Mistletoe Dark", scheme="MistletoeDark", icons="breeze-dark", wallpaper="Mistletoe"),
-    "light": dict(name="Mistletoe Light", scheme="MistletoeLight", icons="breeze", wallpaper="Mistletoe"),
+    "dark": dict(name="Mistletoe Dark", scheme="MistletoeDark", icons="Mistletoe-Dark", wallpaper="Mistletoe"),
+    "light": dict(name="Mistletoe Light", scheme="MistletoeLight", icons="Mistletoe-Light", wallpaper="Mistletoe"),
     # Special editions: the palette sampled from their own wallpaper.
-    "neon": dict(name="Mistletoe Neon", scheme="MistletoeNeon", icons="breeze-dark", wallpaper="Mistletoe-Neon"),
-    "ember": dict(name="Mistletoe Ember", scheme="MistletoeEmber", icons="breeze-dark", wallpaper="Mistletoe-Ember"),
+    "neon": dict(name="Mistletoe Neon", scheme="MistletoeNeon", icons="Mistletoe-Neon", wallpaper="Mistletoe-Neon"),
+    "ember": dict(name="Mistletoe Ember", scheme="MistletoeEmber", icons="Mistletoe-Ember", wallpaper="Mistletoe-Ember"),
 }
 
 
@@ -807,10 +809,13 @@ def metadata(variant, cfg):
 
 
 def lock_screen():
-    """kscreenlocker loads its UI from a Plasma *shell* package (kscreenlockerrc
-    [Greeter] Theme), not from the Global Theme, so the Mistletoe lock screen
-    ships as its own small shell package. Its colours follow the active
-    scheme, so one package serves every edition."""
+    """kscreenlocker loads its UI from the Plasma *shell* package, not from
+    the Global Theme and not from kscreenlockerrc's Theme key (Plasma 6.7
+    ignores it). The shell is named by PLASMA_DEFAULT_SHELL, which install.sh
+    sets for KWin alone: KWin starts the locker, while plasmashell, which must
+    keep the desktop shell, never sees it. So the Mistletoe lock screen ships
+    as its own small shell package. Its colours follow the active scheme, so
+    one package serves every edition."""
     shell = ROOT / "shells" / "org.mistletoe.lockscreen"
     lock = shell / "contents" / "lockscreen"
     lock.mkdir(parents=True, exist_ok=True)
@@ -825,9 +830,10 @@ def lock_screen():
     (lock / "mistletoe-mark.svg").write_text((ROOT / "branding" / "mistletoe-mark.svg").read_text())
 
     (shell / "metadata.json").write_text(json.dumps({
-        # Registered as a Look-and-Feel package (see install.sh): as a plain
-        # shell package kscreenlocker fell back to the distribution's.
-        "KPackageStructure": "Plasma/LookAndFeel",
+        # A shell package: the locker takes its UI from the Plasma *shell*
+        # package (anything this one lacks falls back to the desktop shell).
+        # install.sh makes the locker, and only the locker, use it.
+        "KPackageStructure": "Plasma/Shell",
         # kscreenlocker rejects packages without API version 2 as "outdated".
         "X-Plasma-APIVersion": "2",
         "X-KDE-ParentApp": "org.kde.plasmashell",

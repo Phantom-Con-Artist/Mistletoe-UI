@@ -35,12 +35,24 @@ for sh in "$ROOT"/shells/*/; do
     dest="$DATA/plasma/shells/$(basename "$sh")"
     rm -rf "$dest"; mkdir -p "$(dirname "$dest")"; cp -r "${sh%/}" "$dest"
     echo "copied $dest"
-    # The locker loads [Greeter] Theme as a Look-and-Feel package.
-    link "$dest" "$DATA/plasma/look-and-feel/$(basename "$sh")"
 done
+# The locker takes its UI from the Plasma shell package named by
+# PLASMA_DEFAULT_SHELL (kscreenlockerrc's Theme key is ignored). KWin starts
+# the locker, so the variable is set for KWin's service only: plasmashell
+# must keep the desktop shell, or it would start with an empty desktop.
+# Takes effect the next time you log in.
+rm -f "$DATA/plasma/look-and-feel/org.mistletoe.lockscreen"
+dropin="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/plasma-kwin_wayland.service.d"
+mkdir -p "$dropin"
+printf '[Service]\nEnvironment=PLASMA_DEFAULT_SHELL=org.mistletoe.lockscreen\n' > "$dropin/mistletoe-lockscreen.conf"
+systemctl --user daemon-reload 2>/dev/null || true
+echo "lock screen: Mistletoe from the next login"
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
 done
+# Icon themes named by the Global Themes. They inherit Breeze until Papirus
+# is installed: `bash scripts/install-icons.sh` downloads it (no root).
+python3 "$ROOT/scripts/gen-icons.py" >/dev/null && echo "icon themes written"
 # KWin scripts (floating-card helper), enabled.
 for k in "$ROOT"/kwin-scripts/*/; do
     id="$(basename "$k")"

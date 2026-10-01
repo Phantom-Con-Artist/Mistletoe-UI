@@ -85,6 +85,12 @@ private temp directory).
 - `plasma-apply-lookandfeel` won't replace a wallpaper you've set; the
   bridge's `sync-wallpaper` does it for the editions.
 - kscreenlocker rejects a shell package without `X-Plasma-APIVersion: 2`.
+- kscreenlocker takes the lock screen from the Plasma shell package
+  (`PLASMA_DEFAULT_SHELL`, default `org.kde.plasma.desktop`), not from
+  `kscreenlockerrc [Greeter] Theme`. `--testing --shell X` proves the QML
+  works, not that a real lock will use it: test without `--shell`.
+- Never set `PLASMA_DEFAULT_SHELL` for the whole session: plasmashell names
+  its config after the shell and would start with an empty desktop.
 - MultiEffect layer shadows render blank offscreen; use `Text.Raised`.
 - `WebEngineProfilePrototype` segfaults inside plasmashell here; keep the
   `WebEngineProfile` form.
