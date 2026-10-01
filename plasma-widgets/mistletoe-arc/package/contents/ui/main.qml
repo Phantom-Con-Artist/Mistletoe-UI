@@ -10,6 +10,12 @@
 
     Arc: click to activate (or minimize if already active), wheel to step
     through apps, middle-click for a new window.
+
+    When the active app has several windows, a second arc rises above the
+    first with a plate per window, the most used in the middle right above
+    the pointer. Click a plate, or scroll over them, to switch windows.
+    The window arc is a rotary dial: the window in use rests at the top and
+    the others turn round to it. Both arcs are loops, so scrolling wraps.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -79,7 +85,109 @@ PlasmoidItem {
         } else if (rows.indexOf(activeRow) < 0) {
             activeRow = rows.length > 0 ? rows[0] : -1;
         }
+        rebuildWindows();
     }
+
+    // ---- Windows of the active app ----------------------------------------
+    // When the active app has several windows they get a semicircle of their
+    // own above the arc: [{ child, id, title, active, minimized, slot }].
+    // Slots count steps from the crest of that arc, right above the pointer;
+    // the most used windows take the middle and the rest alternate outwards.
+    property var windows: []
+    property string activeWindowId: ""
+    // How often each window was picked (window id -> count). A pick is a
+    // click on its label, or the window staying active for a moment however
+    // it got there; windows merely scrolled past don't count.
+    property var uses: ({})
+    // Slots stay put while the arc is open so labels never jump under the
+    // pointer; they are dealt again when it opens or the windows change.
+    property var slots: ({})
+    property string slotsKey: ""
+
+    function dealSlots(ids) {
+        const ranked = ids.slice().sort((a, b) => (uses[b] || 0) - (uses[a] || 0));
+        const even = ranked.length % 2 === 0;
+        const dealt = {};
+        for (let i = 0; i < ranked.length; ++i) {
+            // An odd count centers the most used window; an even count has
+            // no middle, so the top two flank it and the arc stays balanced.
+            dealt[ranked[i]] = even
+                ? (i % 2 === 0 ? 1 : -1) * (Math.floor(i / 2) + 0.5)
+                : (i === 0 ? 0 : (i % 2 === 1 ? 1 : -1) * Math.ceil(i / 2));
+        }
+        slots = dealt;
+    }
+
+    function rebuildWindows() {
+        const list = [];
+        let activeId = "";
+        if (activeRow >= 0 && activeRow < tasks.count) {
+            const parent = tasks.makeModelIndex(activeRow);
+            const n = tasks.data(parent, TaskManager.AbstractTasksModel.IsGroupParent) ? tasks.rowCount(parent) : 0;
+            const app = activeName.toLowerCase();
+            for (let c = 0; c < n; ++c) {
+                const idx = tasks.makeModelIndex(activeRow, c);
+                const ids = tasks.data(idx, TaskManager.AbstractTasksModel.WinIdList);
+                const id = String(ids && ids.length > 0 ? ids[0] : c);
+                // "Notes.txt — Kate" reads better as "Notes.txt" under Kate.
+                let title = String(tasks.data(idx, Qt.DisplayRole) || "");
+                const cut = title.match(/^(.*\S)\s+[—–-]\s+([^—–-]+)$/);
+                if (cut && app && (cut[2].toLowerCase().indexOf(app) >= 0 || app.indexOf(cut[2].toLowerCase()) >= 0)) {
+                    title = cut[1];
+                }
+                const active = tasks.data(idx, TaskManager.AbstractTasksModel.IsActive) === true;
+                if (active) {
+                    activeId = id;
+                }
+                list.push({
+                    child: c,
+                    id: id,
+                    title: title || activeName,
+                    active: active,
+                    minimized: tasks.data(idx, TaskManager.AbstractTasksModel.IsMinimized) === true
+                });
+            }
+        }
+        const ids = list.map(w => w.id);
+        const key = ids.slice().sort().join("|");
+        if (key !== slotsKey) {
+            slotsKey = key;
+            dealSlots(ids);
+        }
+        for (const w of list) {
+            w.slot = slots[w.id] || 0;
+        }
+        windows = list.length > 1 ? list : [];
+        activeWindowId = activeId;
+    }
+
+    function activateWindow(child, id, clicked) {
+        if (clicked) {
+            countUse(id);
+            dwell.counted = id;
+        }
+        tasks.requestActivate(tasks.makeModelIndex(activeRow, child));
+    }
+
+    function countUse(id) {
+        const next = Object.assign({}, uses);
+        next[id] = (next[id] || 0) + 1;
+        uses = next;
+    }
+
+    Timer {
+        id: dwell
+        // The window already counted by a click, so it isn't counted twice.
+        property string counted: ""
+        interval: 1500
+        onTriggered: {
+            if (root.activeWindowId && root.activeWindowId !== counted) {
+                root.countUse(root.activeWindowId);
+            }
+            counted = "";
+        }
+    }
+    onActiveWindowIdChanged: dwell.restart()
 
     function activate(row, isActive, isGroup, childCount) {
         if (isGroup) {
@@ -99,7 +207,8 @@ PlasmoidItem {
     }
 
     function step(direction) {
-        const rank = Math.max(0, Math.min(order.length - 1, activeRank + direction));
+        // The arc is a loop: stepping past either end wraps to the other.
+        const rank = order.length > 0 ? (activeRank + direction + order.length) % order.length : 0;
         if (order.length > 0 && rank !== activeRank) {
             tasks.requestActivate(tasks.makeModelIndex(order[rank]));
         }
@@ -267,6 +376,9 @@ PlasmoidItem {
         onRowsMoved: root.rebuildOrder()
         onModelReset: root.rebuildOrder()
         onDataChanged: root.rebuildOrder()
+        // Windows joining or leaving a group arrive as child rows.
+        onRowsInserted: root.rebuildOrder()
+        onRowsRemoved: root.rebuildOrder()
         Component.onCompleted: root.rebuildOrder()
     }
 
@@ -318,6 +430,9 @@ PlasmoidItem {
             onActivateRow: (row, isActive, isGroup, childCount) => root.activate(row, isActive, isGroup, childCount)
             onNewInstance: (row) => tasks.requestNewInstance(tasks.makeModelIndex(row))
             onStepRequested: (direction) => root.step(direction)
+            windows: root.windows
+            open: hideDelay.expandedLatched
+            onWindowActivated: (child, id, clicked) => root.activateWindow(child, id, clicked)
 
             HoverHandler {
                 onHoveredChanged: root.arcHovered = hovered
@@ -336,6 +451,11 @@ PlasmoidItem {
     onExpandedChanged: {
         if (expanded) {
             hideDelay.stop();
+            if (!hideDelay.expandedLatched) {
+                // Opening afresh: put the most used windows back in the middle.
+                dealSlots(windows.map(w => w.id));
+                rebuildWindows();
+            }
             hideDelay.expandedLatched = true;
         } else {
             hideDelay.restart();
