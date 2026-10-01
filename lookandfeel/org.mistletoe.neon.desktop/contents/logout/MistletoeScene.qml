@@ -69,19 +69,15 @@ Item {
         onTriggered: scene.now = new Date()
     }
     Column {
+        id: clockColumn
         x: Math.round(scene.width * 0.07)
         y: Math.round(scene.height * 0.3)
         spacing: 0
+        // The same arrangement as the desktop clock: the time, a hairline
+        // that fills with gold as the minute passes, then the day and date
+        // on one line.
         Text {
-            text: Qt.formatDate(scene.now, "dddd").toUpperCase()
-            color: scene.gold
-            style: Text.Raised
-            styleColor: scene.shadowOn(scene.clockLight)
-            font.family: "Mistletoe Display"
-            font.pixelSize: Math.round(scene.height * 0.022)
-            font.letterSpacing: Math.round(scene.height * 0.008)
-        }
-        Text {
+            id: clockTime
             text: Qt.formatTime(scene.now, "hh:mm")
             color: scene.textOn(scene.clockLight)
             style: Text.Raised
@@ -89,19 +85,53 @@ Item {
             font.family: "Mistletoe Display"
             font.pixelSize: Math.round(scene.height * 0.2)
         }
-        Rectangle {
-            width: parent.width * 0.62
+        Item {
+            width: clockTime.width
             height: 1
-            color: scene.tint(scene.gold, 0.8)
+            Rectangle {
+                anchors.fill: parent
+                color: scene.tint(scene.textOn(scene.clockLight), 0.22)
+            }
+            Rectangle {
+                width: parent.width * scene.now.getSeconds() / 59
+                height: 2
+                y: -0.5
+                color: scene.gold
+                Behavior on width {
+                    enabled: scene.now.getSeconds() !== 0
+                    NumberAnimation { duration: 900; easing.type: Easing.OutCubic }
+                }
+            }
         }
-        Text {
-            topPadding: Math.round(scene.height * 0.014)
-            text: Qt.formatDate(scene.now, "d MMMM yyyy")
-            color: scene.tint(scene.textOn(scene.clockLight), 0.85)
-            style: Text.Raised
-            styleColor: scene.shadowOn(scene.clockLight)
-            font.family: "Mistletoe Accent"
-            font.pixelSize: Math.round(scene.height * 0.03)
+        Row {
+            topPadding: Math.round(scene.height * 0.016)
+            spacing: Math.round(scene.height * 0.012)
+            Text {
+                anchors.baseline: clockDate.baseline
+                text: Qt.formatDate(scene.now, "dddd").toUpperCase()
+                color: scene.textOn(scene.clockLight)
+                style: Text.Raised
+                styleColor: scene.shadowOn(scene.clockLight)
+                font.family: "Mistletoe Display"
+                font.pixelSize: Math.round(scene.height * 0.02)
+                font.letterSpacing: Math.round(scene.height * 0.005)
+            }
+            Rectangle {
+                anchors.verticalCenter: clockDate.verticalCenter
+                width: Math.max(5, Math.round(scene.height * 0.007))
+                height: width
+                rotation: 45
+                color: scene.gold
+            }
+            Text {
+                id: clockDate
+                text: Qt.formatDate(scene.now, "d MMMM yyyy")
+                color: scene.textOn(scene.clockLight)
+                style: Text.Raised
+                styleColor: scene.shadowOn(scene.clockLight)
+                font.family: "Mistletoe Accent"
+                font.pixelSize: Math.round(scene.height * 0.03)
+            }
         }
     }
 

@@ -9,7 +9,7 @@ smallestReadableFont=Mistletoe Text,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 activeFont=Mistletoe Text,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
 
 [kdeglobals][KDE]
-widgetStyle=Breeze
+widgetStyle=kvantum
 
 [kdeglobals][Icons]
 Theme=breeze-dark

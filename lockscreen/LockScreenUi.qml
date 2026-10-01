@@ -1,8 +1,9 @@
 /*
     Mistletoe lock screen: cinematic and quiet.
 
-    The wallpaper stays (dimmed, never blurred). On the left, the day in
-    Ad Astra small caps, the time large in Ad Astra, the date in Mythril.
+    The wallpaper stays (dimmed, never blurred). On the left, the clock as
+    on the desktop: the time large in Ad Astra, a hairline that fills with
+    gold through the minute, then the day and the date on one line.
     Low in the centre, one chamfered password shard with a gold hairline:
     it always has focus, so you can just start typing. A wrong password
     shakes the shard and shows the message beneath it. Sleep and Switch
@@ -164,16 +165,11 @@ Item {
         x: Math.round(ui.width * 0.07)
         y: Math.round(ui.height * 0.3)
         spacing: 0
+        // The same arrangement as the desktop clock: the time, a hairline
+        // that fills with gold as the minute passes, then the day and date
+        // on one line.
         Text {
-            text: Qt.formatDate(ui.now, "dddd").toUpperCase()
-            color: ui.gold
-            style: Text.Raised
-            styleColor: ui.shadowOn(ui.clockLight)
-            font.family: "Mistletoe Display"
-            font.pixelSize: Math.round(ui.height * 0.022)
-            font.letterSpacing: Math.round(ui.height * 0.008)
-        }
-        Text {
+            id: clockTime
             text: Qt.formatTime(ui.now, "hh:mm")
             color: ui.textOn(ui.clockLight)
             style: Text.Raised
@@ -181,19 +177,53 @@ Item {
             font.family: "Mistletoe Display"
             font.pixelSize: Math.round(ui.height * 0.2)
         }
-        Rectangle {
-            width: parent.width * 0.62
+        Item {
+            width: clockTime.width
             height: 1
-            color: ui.tint(ui.gold, 0.8)
+            Rectangle {
+                anchors.fill: parent
+                color: ui.tint(ui.textOn(ui.clockLight), 0.22)
+            }
+            Rectangle {
+                width: parent.width * ui.now.getSeconds() / 59
+                height: 2
+                y: -0.5
+                color: ui.gold
+                Behavior on width {
+                    enabled: ui.now.getSeconds() !== 0
+                    NumberAnimation { duration: 900; easing.type: Easing.OutCubic }
+                }
+            }
         }
-        Text {
-            topPadding: Math.round(ui.height * 0.014)
-            text: Qt.formatDate(ui.now, "d MMMM yyyy")
-            color: ui.tint(ui.textOn(ui.clockLight), 0.85)
-            style: Text.Raised
-            styleColor: ui.shadowOn(ui.clockLight)
-            font.family: "Mistletoe Accent"
-            font.pixelSize: Math.round(ui.height * 0.03)
+        Row {
+            topPadding: Math.round(ui.height * 0.016)
+            spacing: Math.round(ui.height * 0.012)
+            Text {
+                anchors.baseline: clockDate.baseline
+                text: Qt.formatDate(ui.now, "dddd").toUpperCase()
+                color: ui.textOn(ui.clockLight)
+                style: Text.Raised
+                styleColor: ui.shadowOn(ui.clockLight)
+                font.family: "Mistletoe Display"
+                font.pixelSize: Math.round(ui.height * 0.02)
+                font.letterSpacing: Math.round(ui.height * 0.005)
+            }
+            Rectangle {
+                anchors.verticalCenter: clockDate.verticalCenter
+                width: Math.max(5, Math.round(ui.height * 0.007))
+                height: width
+                rotation: 45
+                color: ui.gold
+            }
+            Text {
+                id: clockDate
+                text: Qt.formatDate(ui.now, "d MMMM yyyy")
+                color: ui.textOn(ui.clockLight)
+                style: Text.Raised
+                styleColor: ui.shadowOn(ui.clockLight)
+                font.family: "Mistletoe Accent"
+                font.pixelSize: Math.round(ui.height * 0.03)
+            }
         }
     }
 

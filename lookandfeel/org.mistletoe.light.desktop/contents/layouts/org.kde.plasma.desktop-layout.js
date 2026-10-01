@@ -21,8 +21,11 @@ function addDashboard(desktop, geo) {
         widget.currentConfigGroup = ["General"];
         widget.writeConfig("section", section);
     };
-    // The clock stands on the bottom margin, above the strip.
-    card("clock", M, snap(geo.height - STRIP - M - 288), 704, 288);
+    // The clock stands where this edition's wallpaper is calmest behind it
+    // (measured by the generator): on the top margin, or on the bottom one
+    // just above the strip.
+    const clockOnTop = false;
+    card("clock", M, clockOnTop ? M : snap(geo.height - STRIP - M - 288), 704, 288);
     let y = M;
     for (const [section, h] of [["hungry", 288], ["favorites", 128], ["media", 352]]) {
         card(section, geo.width - M - W, y, W, h);

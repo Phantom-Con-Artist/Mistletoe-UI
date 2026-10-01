@@ -34,6 +34,27 @@ VARIANTS = {
 }
 
 
+def clock_on_top(wallpaper, light):
+    """Whether the desktop clock reads better top left than bottom left on
+    this wallpaper: the darker spot for a dark edition (its text is light),
+    the more even one for the light edition."""
+    from PIL import Image, ImageStat
+    pics = sorted((ROOT / "wallpapers" / wallpaper / "contents" / "images").glob("*"), key=lambda p: p.stat().st_size)
+    if not pics:
+        return False
+    sw, sh = 1920, 1080
+    im = Image.open(pics[-1]).convert("L")
+    scale = max(sw / im.width, sh / im.height)
+    im = im.resize((round(im.width * scale), round(im.height * scale)))
+    ox, oy = (im.width - sw) // 2, (im.height - sh) // 2
+    im = im.crop((ox, oy, ox + sw, oy + sh))
+    top = ImageStat.Stat(im.crop((48, 48, 48 + 704, 48 + 288)))
+    bottom = ImageStat.Stat(im.crop((48, 704, 48 + 704, 704 + 288)))
+    if light:
+        return top.stddev[0] < bottom.stddev[0]
+    return top.mean[0] < bottom.mean[0]
+
+
 def palette(scheme):
     """Ink, bone and gold of a colour scheme (its Window background, text and
     focus colours) as #rrggbb, for surfaces that can't read the scheme."""
@@ -128,19 +149,15 @@ Item {
         onTriggered: scene.now = new Date()
     }
     Column {
+        id: clockColumn
         x: Math.round(scene.width * 0.07)
         y: Math.round(scene.height * 0.3)
         spacing: 0
+        // The same arrangement as the desktop clock: the time, a hairline
+        // that fills with gold as the minute passes, then the day and date
+        // on one line.
         Text {
-            text: Qt.formatDate(scene.now, "dddd").toUpperCase()
-            color: scene.gold
-            style: Text.Raised
-            styleColor: scene.shadowOn(scene.clockLight)
-            font.family: "Mistletoe Display"
-            font.pixelSize: Math.round(scene.height * 0.022)
-            font.letterSpacing: Math.round(scene.height * 0.008)
-        }
-        Text {
+            id: clockTime
             text: Qt.formatTime(scene.now, "hh:mm")
             color: scene.textOn(scene.clockLight)
             style: Text.Raised
@@ -148,19 +165,53 @@ Item {
             font.family: "Mistletoe Display"
             font.pixelSize: Math.round(scene.height * 0.2)
         }
-        Rectangle {
-            width: parent.width * 0.62
+        Item {
+            width: clockTime.width
             height: 1
-            color: scene.tint(scene.gold, 0.8)
+            Rectangle {
+                anchors.fill: parent
+                color: scene.tint(scene.textOn(scene.clockLight), 0.22)
+            }
+            Rectangle {
+                width: parent.width * scene.now.getSeconds() / 59
+                height: 2
+                y: -0.5
+                color: scene.gold
+                Behavior on width {
+                    enabled: scene.now.getSeconds() !== 0
+                    NumberAnimation { duration: 900; easing.type: Easing.OutCubic }
+                }
+            }
         }
-        Text {
-            topPadding: Math.round(scene.height * 0.014)
-            text: Qt.formatDate(scene.now, "d MMMM yyyy")
-            color: scene.tint(scene.textOn(scene.clockLight), 0.85)
-            style: Text.Raised
-            styleColor: scene.shadowOn(scene.clockLight)
-            font.family: "Mistletoe Accent"
-            font.pixelSize: Math.round(scene.height * 0.03)
+        Row {
+            topPadding: Math.round(scene.height * 0.016)
+            spacing: Math.round(scene.height * 0.012)
+            Text {
+                anchors.baseline: clockDate.baseline
+                text: Qt.formatDate(scene.now, "dddd").toUpperCase()
+                color: scene.textOn(scene.clockLight)
+                style: Text.Raised
+                styleColor: scene.shadowOn(scene.clockLight)
+                font.family: "Mistletoe Display"
+                font.pixelSize: Math.round(scene.height * 0.02)
+                font.letterSpacing: Math.round(scene.height * 0.005)
+            }
+            Rectangle {
+                anchors.verticalCenter: clockDate.verticalCenter
+                width: Math.max(5, Math.round(scene.height * 0.007))
+                height: width
+                rotation: 45
+                color: scene.gold
+            }
+            Text {
+                id: clockDate
+                text: Qt.formatDate(scene.now, "d MMMM yyyy")
+                color: scene.textOn(scene.clockLight)
+                style: Text.Raised
+                styleColor: scene.shadowOn(scene.clockLight)
+                font.family: "Mistletoe Accent"
+                font.pixelSize: Math.round(scene.height * 0.03)
+            }
         }
     }
 
@@ -627,7 +678,7 @@ smallestReadableFont={font8}
 activeFont={font10}
 
 [kdeglobals][KDE]
-widgetStyle=Breeze
+widgetStyle=kvantum
 
 [kdeglobals][Icons]
 Theme={icons}
@@ -673,8 +724,11 @@ function addDashboard(desktop, geo) {
         widget.currentConfigGroup = ["General"];
         widget.writeConfig("section", section);
     };
-    // The clock stands on the bottom margin, above the strip.
-    card("clock", M, snap(geo.height - STRIP - M - 288), 704, 288);
+    // The clock stands where this edition's wallpaper is calmest behind it
+    // (measured by the generator): on the top margin, or on the bottom one
+    // just above the strip.
+    const clockOnTop = %CLOCK_ON_TOP%;
+    card("clock", M, clockOnTop ? M : snap(geo.height - STRIP - M - 288), 704, 288);
     let y = M;
     for (const [section, h] of [["hungry", 288], ["favorites", 128], ["media", 352]]) {
         card(section, geo.width - M - W, y, W, h);
@@ -794,7 +848,9 @@ def main():
         (contents / "defaults").write_text(DEFAULTS.format(
             scheme=cfg["scheme"], icons=cfg["icons"], variant=variant, wallpaper=cfg["wallpaper"],
             font10=FONT.format(size=10), font9=FONT.format(size=9), font8=FONT.format(size=8)))
-        (contents / "layouts" / "org.kde.plasma.desktop-layout.js").write_text(LAYOUT.replace("%WALLPAPER%", cfg["wallpaper"]))
+        on_top = clock_on_top(cfg["wallpaper"], variant == "light")
+        (contents / "layouts" / "org.kde.plasma.desktop-layout.js").write_text(
+            LAYOUT.replace("%WALLPAPER%", cfg["wallpaper"]).replace("%CLOCK_ON_TOP%", "true" if on_top else "false"))
         # The splash and the leave screen, both built on the shared scene.
         colours = palette(cfg["scheme"])
         scene = SCENE.replace("%INK%", colours["ink"]).replace("%BONE%", colours["bone"]).replace("%GOLD%", colours["gold"])
