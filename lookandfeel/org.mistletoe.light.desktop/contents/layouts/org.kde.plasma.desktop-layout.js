@@ -2,32 +2,34 @@
 //
 // One matte strip along the bottom: launcher | dial | arc (centred on screen) |
 // system tray | status. Windows stop above it. The dashboard sits on the
-// desktop, over the dark left of the Mistletoe wallpaper.
+// desktop: a large clock bottom left and one column of cards on the right.
 
 const STRIP = 44;
 
 // ---- Dashboard ----------------------------------------------------------
-// Separate cards, each its own widget with its own facet shape. The left
-// column sits over the dark left of the wallpaper; the power card (live
-// graph, hungriest apps, tips) sits top right, over the dark planet.
+// A quiet desktop: the clock, bare on the wallpaper, is the hero bottom left;
+// a single column on the right holds the system card, the favorites dock and
+// the media card (only a gem until it is opened). Every plate is the same
+// shard shape and the same width.
 function addDashboard(desktop, geo) {
     // Plasma snaps desktop widgets to a 16px grid, so every size and gap
     // here is a multiple of 16 (otherwise the snapping eats the gaps).
-    const W = 352, GAP = 32, M = 48;
+    const W = 448, GAP = 16, M = 48;
+    const snap = (v) => Math.round(v / 16) * 16;
     const card = (section, x, y, w, h) => {
         const widget = desktop.addWidget("org.mistletoe.dashboard", x, y, w, h);
         widget.currentConfigGroup = ["General"];
         widget.writeConfig("section", section);
     };
+    // The clock stands on the bottom margin, above the strip.
+    card("clock", M, snap(geo.height - STRIP - M - 288), 704, 288);
     let y = M;
-    for (const [section, h] of [["clock", 224], ["favorites", 208], ["mostused", 272], ["power", 64]]) {
-        card(section, M, y, W, h);
+    for (const [section, h] of [["hungry", 288], ["favorites", 128], ["media", 352]]) {
+        card(section, geo.width - M - W, y, W, h);
         y += h + GAP;
     }
-    // The power card is the big one: live graph, hungriest apps, tips.
-    card("hungry", geo.width - M - 448, M, 448, 576);
-    // The media card (YouTube / Music) is optional: add "Mistletoe Dashboard"
-    // from the widget list and set its card to "media".
+    // "mostused" and "power" cards still exist: add "Mistletoe Dashboard"
+    // from the widget list and set its card.
 }
 
 // ---- Desktop ------------------------------------------------------------
@@ -51,8 +53,7 @@ strip.floating = false;
 strip.lengthMode = "fill";
 
 strip.addWidget("org.mistletoe.launcher");
-// The dial: the active app's menus and every settings page, from the
-// left screen edge.
+// The dial: the active app's menus, places and every settings page.
 const dial = strip.addWidget("org.mistletoe.dial");
 dial.globalShortcut = "Meta+Space";
 strip.addWidget("org.mistletoe.arc");

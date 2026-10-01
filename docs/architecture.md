@@ -27,7 +27,7 @@ per-user, touches nothing system-wide and can be switched off like any theme.
 | Colours | `color-schemes/Mistletoe*.colors` | One palette table in `scripts/gen-colors.py` drives every colour everywhere. |
 | Plasma style | `themes/mistletoe-*` | 9-slice SVG frames with chamfered corners and gold threads; the panel background is the matte strip. `plasmarc` turns blur and contrast off. |
 | Window frames | `window-decorations/aurorae/mistletoe-*` | Aurorae SVG theme: slim title bar, chamfered corner, gem buttons, real Gaussian shadows. |
-| Global Theme | `lookandfeel/org.mistletoe.*.desktop` | Sets colours, style, frames, icons, cursor, fonts (the Text role) and wallpaper; its layout script builds the strip and the cards. |
+| Global Theme | `lookandfeel/org.mistletoe.*.desktop` | Sets colours, style, frames, icons, cursor, fonts (the Text role) and wallpaper; its layout script builds the strip and the cards. Also carries the start-up splash (`contents/splash`) and the leave screen (`contents/logout`); both are built on one generated scene that mirrors the lock screen, with the edition's colours written in and the wallpaper and your name read from `~/.local/share/mistletoe/Appearance.qml` (kept by the bridge's `lock-settings`). |
 | Fonts | `fonts/`, fontconfig | Three roles (`Mistletoe Display`, `Accent`, `Text`) are fontconfig aliases written by `mistletoe-menu fonts`. Every surface names a role, never a family, so a switch changes everything at once. |
 | Lock screen | `shells/org.mistletoe.lockscreen` | kscreenlocker loads its UI from a Plasma *shell* package chosen in `kscreenlockerrc [Greeter] Theme`. It is installed as a copy so the bridge can write `backdrop.js` (text contrast, distro line) into it. |
 
@@ -45,10 +45,13 @@ per-user, touches nothing system-wide and can be switched off like any theme.
   window's menu address from TaskManager (`ApplicationMenuServiceName/ObjectPath`)
   and asks the bridge to dump or click it. Places and Settings come from the
   bridge and a per-machine index of KCMs.
-- **dashboard**: one widget, one card per instance (`section` setting):
-  clock, favourites, most used, power (live graph and tips), power buttons,
-  media (QtWebEngine, loaded only while open). `Card.qml` adds the grip,
-  resize corner and pin; a pinned card becomes its own frameless window.
+- **dashboard**: one widget, one card per instance (`section` setting). The
+  layout places four: the clock (bare, bottom left), and on the right the
+  system card (live graph, busiest apps, a tip), the favourites dock and
+  media (QtWebEngine, loaded only while open; asleep it is a gem with no
+  plate). Most used and power buttons exist but aren't placed. Every plate is
+  the same shard; `Card.qml` adds the grip, resize corner and pin, and a
+  pinned card becomes its own frameless window.
 
 Shared shapes (`Shard`, `Gem`, `Overlay`) live once in
 `plasma-widgets/shared/` and are copied into each package by

@@ -392,10 +392,8 @@ def options():
 
 
 # ---- Backdrop brightness ---------------------------------------------------------
-def wallpaper_luma(sw, sh):
-    """The current wallpaper as a greyscale image scaled and cropped to the
-    screen, the way Plasma's "Scaled and Cropped" fill shows it (or None)."""
-    from PIL import Image
+def wallpaper_file():
+    """The image file of the primary desktop's wallpaper (or None)."""
     images = current_wallpapers()
     if not images:
         return None
@@ -405,6 +403,16 @@ def wallpaper_luma(sw, sh):
         if not pics:
             return None
         path = pics[-1]
+    return path if path.is_file() else None
+
+
+def wallpaper_luma(sw, sh):
+    """The current wallpaper as a greyscale image scaled and cropped to the
+    screen, the way Plasma's "Scaled and Cropped" fill shows it (or None)."""
+    from PIL import Image
+    path = wallpaper_file()
+    if not path:
+        return None
     im = Image.open(path).convert("L")
     scale = max(sw / im.width, sh / im.height)
     im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))))
@@ -462,7 +470,40 @@ def lock_settings():
         for key, value in values.items():
             js.append(f"var {key} = {json.dumps(value)};")
         target.write_text("\n".join(js) + "\n")
+    session_screens(im, sw, sh, values.get("distro", ""))
     return values
+
+
+def session_screens(im, sw, sh, distro):
+    """What the splash and the leave (sleep, restart, shut down) screens need
+    to look like the lock screen: the wallpaper file, whether it is light
+    behind the clock and the branding under their veil, the distro line and
+    your name. They are part of the Global Theme packages, which can't hold
+    per-machine values, so these go in a small QML object they load from
+    ~/.local/share/mistletoe/Appearance.qml."""
+    import pwd
+    veil = 0.62
+    path = wallpaper_file()
+    try:
+        name = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0] or os.environ.get("USER", "")
+    except KeyError:
+        name = os.environ.get("USER", "")
+    props = {
+        "wallpaper": path.as_uri() if path else "",
+        "clockOnLight": bool(im and region_light(im, sw * 0.07, sh * 0.3, sw * 0.32, sh * 0.3, veil=veil)),
+        "badgeOnLight": bool(im and region_light(im, sw - 540, 0, 540, sh * 0.08, veil=veil)),
+        "centerOnLight": bool(im and region_light(im, (sw - 560) / 2, sh * 0.62, 560, sh * 0.2, veil=veil)),
+        "distro": distro,
+        "userName": name,
+    }
+    lines = ["// Written by mistletoe-menu lock-settings for the splash and leave screens.", "import QtQml", "", "QtObject {"]
+    for key, value in props.items():
+        kind = "bool" if isinstance(value, bool) else "string"
+        lines.append(f"    readonly property {kind} {key}: {json.dumps(value)}")
+    lines.append("}")
+    target = DATA / "mistletoe" / "Appearance.qml"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("\n".join(lines) + "\n")
 
 
 def serve():

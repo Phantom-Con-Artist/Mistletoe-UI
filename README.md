@@ -24,9 +24,10 @@ one built on stock KDE Plasma 6 (developed on Fedora 44, Plasma 6.7, Wayland):
 | **Launcher fan** | Click the corner logo: apps bloom out of the corner onto gold orbits. Type to search, scroll to page, right-click to pin a favourite. |
 | **Status fan** | Click the clock: Bluetooth, network, volume, media, notifications (with Do Not Disturb) and settings on two orbits, a big winding dial, and a ring of power actions. |
 | **The dial** | `Meta+Space` or the gem in the strip. A rotary semicircle with three modes: the **app** you were using (its menus), your **places**, and **settings** (every System Settings page plus the Mistletoe options). Type to search. |
-| **Desktop cards** | A big clock straight on the wallpaper, favourites, most used apps, a live power graph with tips, power buttons, and an optional YouTube/Music player. Drag, resize, or pin any card to float above your windows. |
+| **Desktop cards** | A quiet desktop: a huge clock and the date straight on the wallpaper, and one column of matching cards: a live system graph with the busiest apps, a favourites dock, and a YouTube/Music player that is only a gem until you open it. Drag, resize, or pin any card to float above your windows. |
 | **Four editions** | Dark, Light, and two special editions whose palettes come from their wallpapers: **Neon** (violet and orchid) and **Ember** (charcoal and vermilion). |
 | **Lock screen** | Cinematic: the clock on the left, one password shard low in the centre, branding top right. |
+| **Splash and leave screens** | Log-in, splash, lock and the sleep / restart / shut-down prompt are one scene: your wallpaper under a matte veil, the clock on the left, branding top right. Only the centre changes: the password shard, a rotary dial that turns one detent per start-up stage, or the leave actions as gems. |
 | **Typefaces** | Two original fonts made for Mistletoe, **Ad Astra** (futuristic, faceted) and **Mythril** (whimsical, soft), alongside Exo 2, and a switch to change which goes where. |
 | **Apps** | Colour schemes, window frames, Konsole profiles and a sharp flat layer for GTK apps, so native apps match. |
 
