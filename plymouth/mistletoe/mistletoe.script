@@ -1,0 +1,126 @@
+# Mistletoe boot screen.
+#
+# A matte field, the mark, and around it a rotary dial of six gems. As the
+# boot goes on the dial turns and the gems light one by one at the stop at
+# the top, the same figure the session splash continues with. A disk
+# password is asked for in a shard under the dial.
+
+Window.SetBackgroundTopColor(0.067, 0.075, 0.086);
+Window.SetBackgroundBottomColor(0.067, 0.075, 0.086);
+
+screen.w = Window.GetWidth();
+screen.h = Window.GetHeight();
+center.x = Window.GetX() + screen.w / 2;
+center.y = Window.GetY() + screen.h / 2 - 30;
+radius = 110;
+gems = 6;
+pi = 3.14159265;
+
+mark.image = Image("mark.png");
+mark.sprite = Sprite(mark.image);
+mark.sprite.SetPosition(center.x - mark.image.GetWidth() / 2, center.y - mark.image.GetHeight() / 2, 2);
+
+orbit.image = Image("orbit.png");
+orbit.sprite = Sprite(orbit.image);
+orbit.sprite.SetPosition(center.x - orbit.image.GetWidth() / 2, center.y - orbit.image.GetHeight() / 2, 1);
+
+stop.image = Image("stop.png");
+stop.sprite = Sprite(stop.image);
+stop.sprite.SetPosition(center.x - 1, center.y - radius - 26, 3);
+
+gem_on = Image("gem-on.png");
+gem_off = Image("gem-off.png");
+for (i = 0; i < gems; i++) {
+    gem[i].sprite = Sprite(gem_off);
+}
+
+# How far the boot has come, 0..1, and where the dial is (it eases after it).
+progress = 0;
+turn = 0;
+
+fun place_gems() {
+    for (i = 0; i < gems; i++) {
+        # Gem i+1 reaches the stop when that many sixths of the boot are done.
+        lit = (progress * gems >= i + 1);
+        image = gem_off;
+        if (lit) image = gem_on;
+        gem[i].sprite.SetImage(image);
+        angle = ((i + 1) - turn) * 2 * pi / gems;
+        x = center.x + radius * Math.Sin(angle) - image.GetWidth() / 2;
+        y = center.y - radius * Math.Cos(angle) - image.GetHeight() / 2;
+        gem[i].sprite.SetPosition(x, y, 4);
+    }
+}
+
+fun refresh() {
+    target = Math.Int(progress * gems);
+    turn = turn + (target - turn) * 0.12;
+    place_gems();
+}
+Plymouth.SetRefreshFunction(refresh);
+
+fun boot_progress(duration, fraction) {
+    if (fraction > progress) progress = fraction;
+}
+Plymouth.SetBootProgressFunction(boot_progress);
+
+# ---- Disk password ------------------------------------------------------
+entry.image = Image("entry.png");
+entry.sprite = Sprite(entry.image);
+entry.x = center.x - entry.image.GetWidth() / 2;
+entry.y = center.y + radius + 70;
+entry.sprite.SetPosition(entry.x, entry.y, 5);
+entry.sprite.SetOpacity(0);
+bullet.image = Image("bullet.png");
+prompt.sprite = Sprite();
+
+fun display_normal() {
+    entry.sprite.SetOpacity(0);
+    prompt.sprite.SetOpacity(0);
+    for (i = 0; bullet[i]; i++) {
+        bullet[i].sprite.SetOpacity(0);
+    }
+}
+
+fun display_password(text, count) {
+    entry.sprite.SetOpacity(1);
+    prompt.image = Image.Text(text, 0.914, 0.894, 0.839);
+    prompt.sprite.SetImage(prompt.image);
+    prompt.sprite.SetPosition(center.x - prompt.image.GetWidth() / 2, entry.y - prompt.image.GetHeight() - 14, 6);
+    prompt.sprite.SetOpacity(1);
+    for (i = 0; bullet[i]; i++) {
+        bullet[i].sprite.SetOpacity(0);
+    }
+    shown = count;
+    if (shown > 18) shown = 18;
+    gap = bullet.image.GetWidth() + 8;
+    for (i = 0; i < shown; i++) {
+        if (!bullet[i]) {
+            bullet[i].sprite = Sprite(bullet.image);
+        }
+        bullet[i].sprite.SetPosition(center.x - shown * gap / 2 + i * gap + 4,
+                                     entry.y + entry.image.GetHeight() / 2 - bullet.image.GetHeight() / 2, 7);
+        bullet[i].sprite.SetOpacity(1);
+    }
+}
+
+Plymouth.SetDisplayNormalFunction(display_normal);
+Plymouth.SetDisplayPasswordFunction(display_password);
+
+# ---- Messages (fsck, updates) -----------------------------------------------
+message.sprite = Sprite();
+fun display_message(text) {
+    message.image = Image.Text(text, 0.914, 0.894, 0.839);
+    message.sprite.SetImage(message.image);
+    message.sprite.SetPosition(center.x - message.image.GetWidth() / 2, Window.GetY() + screen.h - 80, 6);
+}
+fun hide_message(text) {
+    message.sprite.SetOpacity(0);
+}
+Plymouth.SetMessageFunction(display_message);
+Plymouth.SetHideMessageFunction(hide_message);
+
+fun quit() {
+    progress = 1;
+}
+Plymouth.SetQuitFunction(quit);

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Mistletoe
+Description=The Mistletoe mark inside a rotary dial that turns as the system boots
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/mistletoe
+ScriptFile=/usr/share/plymouth/themes/mistletoe/mistletoe.script
