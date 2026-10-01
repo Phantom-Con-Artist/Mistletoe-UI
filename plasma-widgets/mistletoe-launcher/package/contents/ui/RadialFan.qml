@@ -3,6 +3,11 @@
     gold arcs, categories sit on an outer rail, and a caption along the edge
     names whatever has focus.
 
+    Like a rotary telephone dial, the arcs turn: scroll the wheel (or drag
+    around the corner) and every ring advances one slot per detent, carrying
+    more apps into view at one end and out at the other. Each ring always
+    shows a full, evenly spread row, so the fan stays symmetric as it turns.
+
     This is a pure view. main.qml supplies the models and reacts to the
     signals, which keeps the fan testable with plain ListModels.
 */
@@ -51,25 +56,127 @@ Item {
     readonly property real unit: Math.max(0.6, Math.min(1, (Math.min(width, height) - 120) / 860))
     readonly property int rings: 5
     readonly property real r0: 132 * unit
-    readonly property real step: 76 * unit
-    readonly property real cell: 54 * unit
+    // Cells are upright squares, so on the diagonal two neighbours need
+    // cell * sqrt(2) between centers to clear each other's corners; the ring
+    // step and the spacing along a ring both allow for that plus a gap.
+    readonly property real step: 80 * unit
+    readonly property real cell: 50 * unit
+    readonly property real pitch: 79 * unit
     readonly property real railRadius: ringRadius(rings - 1) + 80 * unit
     readonly property var capacities: {
         const caps = [];
         for (let k = 0; k < rings; ++k) {
             const arc = ringRadius(k) * (thetaMax - thetaMin) * Math.PI / 180;
-            caps.push(Math.max(1, Math.floor(arc / (68 * unit))));
+            caps.push(Math.max(1, Math.floor(arc / pitch)));
         }
         return caps;
     }
-    readonly property int pageSize: capacities.reduce((a, b) => a + b, 0)
     readonly property int count: model && model.count !== undefined ? model.count : 0
-    readonly property int pages: Math.max(1, Math.ceil(count / pageSize))
-    readonly property int shown: Math.max(0, Math.min(pageSize, count - page * pageSize))
-    property int page: 0
+    readonly property int pageSize: capacities.reduce((a, b) => a + b, 0)
+    // What fits is laid out exactly as a still fan: rings fill from the
+    // inside out and a partly filled ring spreads evenly. Anything beyond
+    // that queues up behind the rings, dealt round-robin, and is dialled in.
+    readonly property var layout: {
+        const ring = [];
+        const along = [];
+        const vis = [];
+        let i = 0;
+        for (let k = 0; k < rings; ++k) {
+            const n = Math.max(0, Math.min(capacities[k], count - i));
+            vis.push(n);
+            for (let j = 0; j < n; ++j, ++i) {
+                ring.push(k);
+                along.push(j);
+            }
+        }
+        for (let m = 0; i < count; ++i, ++m) {
+            const k = m % rings;
+            ring.push(k);
+            along.push(capacities[k] + Math.floor(m / rings));
+        }
+        return { ring: ring, along: along, vis: vis };
+    }
+    // How many detents the dial can turn: the longest queue behind a ring.
+    readonly property int maxTurn: Math.ceil(Math.max(0, count - pageSize) / rings)
+    // Current turn of the dial in slots (eased), and where it is headed.
+    property real turn: 0
+    property int turnTarget: 0
+    property bool dragging: false
 
     function ringRadius(k) {
         return r0 + k * step;
+    }
+
+    function clampTurn(t) {
+        return Math.max(0, Math.min(maxTurn, t));
+    }
+
+    // Turn the dial by whole detents, easing into place.
+    function turnBy(detents) {
+        turnTarget = clampTurn(turnTarget + detents);
+    }
+
+    // The wheel dials through the groups on the rail, wrapping round like a
+    // telephone dial. With Shift held (or while searching, when there are no
+    // groups) it turns through the apps of a long list instead.
+    function wheelStep(d, withinGroup) {
+        if (withinGroup || query.length > 0 || rail.length < 2) {
+            if (maxTurn > 0) {
+                turnBy(d);
+            } else {
+                move(d);
+            }
+            return;
+        }
+        railActivated((railIndex + d + rail.length) % rail.length);
+    }
+
+    // ---- Rail dial ------------------------------------------------------
+    // The rail is a dial: the active group always rests at the middle of the
+    // arc and the others turn round to it, leaving at one end and returning
+    // at the other. railPos is the (unwrapped) eased position of the dial.
+    property real railPos: 0
+    property real railTarget: 0
+    // Which way the dial last turned (+1 next group, -1 previous), handed to
+    // the next model change so the apps sweep in the same way.
+    property int pendingSweep: 0
+    property int sweep: 0
+
+    // Slot of rail gem i along the arc, wrapped: -0.5 .. rail.length - 0.5.
+    function railSlot(i) {
+        const n = Math.max(1, rail.length);
+        const s = i - railPos + Math.floor(n / 2) + 0.5;
+        return ((s % n) + n) % n - 0.5;
+    }
+
+    NumberAnimation {
+        id: railSpin
+        target: fan; property: "railPos"
+        duration: 420
+        easing.type: Easing.OutBack
+        easing.overshoot: 1.1
+    }
+
+    onRailIndexChanged: {
+        const n = Math.max(1, rail.length);
+        const at = ((Math.round(railTarget) % n) + n) % n;
+        let d = (((railIndex - at) % n) + n) % n;
+        if (d > n / 2) {
+            d -= n;
+        }
+        railTarget = Math.round(railTarget) + d;
+        if (veil > 0 && !closing) {
+            // The model may change just before or just after the index, so
+            // set the sweep now and keep it for a model change this turn.
+            pendingSweep = d > 0 ? 1 : d < 0 ? -1 : 0;
+            sweep = pendingSweep;
+            Qt.callLater(() => fan.pendingSweep = 0);
+            railSpin.to = railTarget;
+            railSpin.restart();
+        } else {
+            railSpin.stop();
+            railPos = railTarget;
+        }
     }
 
     function point(r, theta) {
@@ -83,25 +190,57 @@ Item {
         return Math.atan2(sy * Math.sin(a), sx * Math.cos(a)) * 180 / Math.PI;
     }
 
-    // Where the i-th item of the current page sits, and when it arrives.
-    // Rings fill from the inside out; a partly filled ring spreads evenly.
+    // Where the i-th item sits with the dial at rest (before `turn`), how
+    // far one detent moves it, and when it arrives in the bloom.
     function slot(i) {
-        if (i < 0 || i >= shown) {
+        if (i < 0 || i >= count) {
             return null;
         }
-        let k = 0;
-        let start = 0;
-        while (i - start >= capacities[k]) {
-            start += capacities[k];
-            ++k;
-        }
-        const n = Math.min(capacities[k], shown - start);
-        const j = i - start;
+        const k = layout.ring[i];
+        const j = layout.along[i];
+        const span = (thetaMax - thetaMin) / layout.vis[k];
         return {
             radius: ringRadius(k),
-            theta: thetaMax - (j + 0.5) * (thetaMax - thetaMin) / n,
-            delay: k * 55 + j * 18
+            theta: thetaMax - (j + 0.5) * span,
+            span: span,
+            along: j,
+            fits: layout.vis[k],
+            delay: k * 55 + Math.min(j, 10) * 18
         };
+    }
+
+    // 1 inside the arc, fading to 0 one slot beyond either end.
+    function presence(sl) {
+        if (!sl) {
+            return 0;
+        }
+        const th = sl.theta + turn * sl.span;
+        const lo = thetaMin - 0.5 * sl.span;
+        const hi = thetaMax + 0.5 * sl.span;
+        return Math.max(0, Math.min(1, (th - lo) / sl.span)) * Math.max(0, Math.min(1, (hi - th) / sl.span));
+    }
+
+    // Turn the dial just far enough that item i is on the arc.
+    function reveal(i) {
+        const sl = slot(i);
+        if (!sl) {
+            return;
+        }
+        if (sl.along - turnTarget < 0) {
+            turnTarget = clampTurn(sl.along);
+        } else if (sl.along - turnTarget > sl.fits - 1) {
+            turnTarget = clampTurn(sl.along - sl.fits + 1);
+        }
+    }
+
+    // First item that is properly on the arc (for Enter with nothing focused).
+    function firstVisible() {
+        for (let i = 0; i < count; ++i) {
+            if (presence(slot(i)) > 0.9) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     // Clearance between the origin (a strip button) and anything laid
@@ -164,7 +303,12 @@ Item {
     function open() {
         foldAway.stop();
         closing = false;
-        page = 0;
+        turnTarget = 0;
+        turn = 0;
+        sweep = 0;
+        pendingSweep = 0;
+        railSpin.stop();
+        railPos = railTarget;
         focusIndex(-1);
         queryInput.text = "";
         bloom = 0;
@@ -184,9 +328,13 @@ Item {
         foldAway.restart();
     }
 
-    // New content re-blooms from the corner; the frame stays put.
+    // New content re-blooms from the corner; the frame stays put. After a
+    // turn of the rail dial it sweeps in along the rings instead.
     onModelChanged: {
-        page = 0;
+        turnTarget = 0;
+        turn = 0;
+        sweep = pendingSweep;
+        pendingSweep = 0;
         focusIndex(-1);
         if (!closing && veil > 0) {
             bloom = 0;
@@ -194,12 +342,12 @@ Item {
         }
     }
 
-    onPageChanged: {
-        if (!closing && veil > 0) {
-            bloom = 0.35;
-            bloomIn.restart();
-        }
+    // The dial eases to its target, except while a finger is on it.
+    Behavior on turn {
+        enabled: !fan.dragging
+        NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
     }
+    onTurnTargetChanged: if (!dragging) turn = turnTarget
 
     // ---- Focus ----------------------------------------------------------
     property int current: -1
@@ -217,8 +365,8 @@ Item {
         if (count === 0) {
             return;
         }
-        const next = current < 0 ? page * pageSize : Math.max(0, Math.min(count - 1, current + delta));
-        page = Math.floor(next / pageSize);
+        const next = current < 0 ? firstVisible() : Math.max(0, Math.min(count - 1, current + delta));
+        reveal(next);
         focusIndex(next);
     }
 
@@ -233,9 +381,43 @@ Item {
     MouseArea {
         anchors.fill: parent
         onClicked: fan.close()
-        onWheel: (wheel) => {
-            const d = wheel.angleDelta.y < 0 ? 1 : -1;
-            fan.page = Math.max(0, Math.min(fan.pages - 1, fan.page + d));
+        // Shift can turn a vertical wheel into a horizontal one.
+        onWheel: (wheel) => fan.wheelStep((wheel.angleDelta.y || wheel.angleDelta.x) < 0 ? 1 : -1,
+                                          wheel.modifiers & Qt.ShiftModifier)
+    }
+
+    // Drag around the corner to spin the dial; the ring under the pointer
+    // follows it, and the dial settles on a detent when released.
+    DragHandler {
+        id: spin
+        target: null
+        enabled: fan.maxTurn > 0
+        property real last: 0
+        property real span: 10
+        function pointerAngle(p) {
+            return Math.atan2(fan.sy * (p.y - fan.origin.y), fan.sx * (p.x - fan.origin.x)) * 180 / Math.PI;
+        }
+        onActiveChanged: {
+            if (active) {
+                const p = centroid.pressPosition;
+                const dist = Math.hypot(p.x - fan.origin.x, p.y - fan.origin.y);
+                const k = Math.max(0, Math.min(fan.rings - 1, Math.round((dist - fan.r0) / fan.step)));
+                span = (fan.thetaMax - fan.thetaMin) / fan.capacities[k];
+                last = pointerAngle(centroid.position);
+                fan.dragging = true;
+            } else {
+                fan.dragging = false;
+                fan.turnTarget = fan.clampTurn(Math.round(fan.turn));
+                fan.turn = fan.turnTarget;
+            }
+        }
+        onCentroidChanged: {
+            if (!active) {
+                return;
+            }
+            const a = pointerAngle(centroid.position);
+            fan.turn = fan.clampTurn(fan.turn + (a - last) / span);
+            last = a;
         }
     }
 
@@ -294,22 +476,27 @@ Item {
             required property int index
             required property var model
 
-            readonly property var slot: fan.slot(index - fan.page * fan.pageSize)
+            readonly property var slot: fan.slot(index)
+            readonly property real presence: fan.presence(slot)
             readonly property real t: slot ? fan.local(slot.delay) : 0
             readonly property real e: fan.outBack(t)
             readonly property bool hot: fan.current === index
-            // Items unfurl along a short spiral rather than a straight ray.
+            // Items unfurl along a short spiral rather than a straight ray;
+            // after a turn of the rail dial they ride in along their ring,
+            // overshooting a touch before they settle.
             readonly property point at: slot
-                ? fan.point(slot.radius * (0.3 + 0.7 * e), slot.theta - (1 - Math.min(1, e)) * 14)
+                ? (fan.sweep !== 0
+                    ? fan.point(slot.radius, slot.theta + fan.turn * slot.span - fan.sweep * (1 - e) * 38)
+                    : fan.point(slot.radius * (0.3 + 0.7 * e), slot.theta + fan.turn * slot.span - (1 - Math.min(1, e)) * 14))
                 : fan.origin
 
-            visible: slot !== null && t > 0
+            visible: slot !== null && t > 0 && presence > 0.01
             width: fan.cell
             height: fan.cell
             x: at.x - width / 2
             y: at.y - height / 2
-            opacity: Math.min(1, t * 2.2)
-            scale: 0.5 + 0.5 * e
+            opacity: Math.min(1, t * 2.2) * presence
+            scale: (fan.sweep !== 0 ? 1 : 0.5 + 0.5 * e) * (0.7 + 0.3 * presence)
 
             Item {
                 anchors.fill: parent
@@ -334,6 +521,7 @@ Item {
 
             MouseArea {
                 anchors.fill: parent
+                enabled: cellItem.presence > 0.5
                 hoverEnabled: true
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onEntered: fan.focusIndex(cellItem.index)
@@ -350,6 +538,21 @@ Item {
     }
 
     // ---- Category rail --------------------------------------------------
+    // The dial's finger stop: a fixed gold mark where the active group rests.
+    Rectangle {
+        readonly property real theta: fan.thetaMax - (Math.floor(Math.max(1, fan.rail.length) / 2) + 0.5)
+            * (fan.thetaMax - fan.thetaMin) / Math.max(1, fan.rail.length)
+        readonly property point at: fan.point(fan.railRadius + 27 * fan.unit, theta)
+        visible: fan.rail.length > 1 && !fan.query
+        width: Math.round(12 * fan.unit)
+        height: 2
+        x: at.x - width / 2
+        y: at.y - height / 2
+        rotation: fan.screenAngle(theta)
+        color: fan.gold
+        opacity: fan.veil
+    }
+
     Repeater {
         model: fan.rail
         delegate: Item {
@@ -357,8 +560,12 @@ Item {
             required property int index
             required property var modelData
 
-            readonly property real theta: fan.thetaMax - (index + 0.5) * (fan.thetaMax - fan.thetaMin) / Math.max(1, fan.rail.length)
-            readonly property real t: fan.outCubic(fan.veil * 1.6 - 0.35 - index * 0.03)
+            // Where the dial has carried this gem; it fades through the seam
+            // where it leaves one end of the arc and returns at the other.
+            readonly property real along: fan.railSlot(index)
+            readonly property real seam: Math.max(0, Math.min(1, 2 * Math.min(along + 0.5, fan.rail.length - 0.5 - along)))
+            readonly property real theta: fan.thetaMax - (along + 0.5) * (fan.thetaMax - fan.thetaMin) / Math.max(1, fan.rail.length)
+            readonly property real t: fan.outCubic(fan.veil * 1.6 - 0.35 - Math.max(0, along) * 0.03) * seam
             readonly property point at: fan.point(fan.railRadius, theta)
             readonly property bool active: fan.railIndex === index && !fan.query
 
@@ -416,7 +623,7 @@ Item {
             width: parent.width
             horizontalAlignment: fan.sx > 0 ? Text.AlignLeft : Text.AlignRight
             text: (fan.query ? "Search" : fan.title).toUpperCase()
-                + (fan.pages > 1 && !fan.query ? "   ·   " + (fan.page + 1) + " / " + fan.pages : "")
+                + (fan.maxTurn > 0 && !fan.query ? "   ·   " + fan.count + "   ·   SHIFT + SCROLL FOR MORE" : "")
             color: fan.gold
             font.family: "Mistletoe Display"
             font.pixelSize: Math.round(10 * fan.unit)
@@ -465,10 +672,10 @@ Item {
                 fan.move(-1);
                 break;
             case Qt.Key_PageDown:
-                fan.page = Math.min(fan.pages - 1, fan.page + 1);
+                fan.turnBy(3);
                 break;
             case Qt.Key_PageUp:
-                fan.page = Math.max(0, fan.page - 1);
+                fan.turnBy(-3);
                 break;
             case Qt.Key_Tab:
                 fan.railActivated((fan.railIndex + 1) % Math.max(1, fan.rail.length));
@@ -478,7 +685,7 @@ Item {
                 break;
             case Qt.Key_Return:
             case Qt.Key_Enter:
-                fan.activate(fan.current >= 0 ? fan.current : fan.page * fan.pageSize);
+                fan.activate(fan.current >= 0 ? fan.current : fan.firstVisible());
                 break;
             case Qt.Key_Escape:
                 fan.escapePressed();
