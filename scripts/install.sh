@@ -41,7 +41,7 @@ done
 for w in "$ROOT"/wallpapers/*/; do
     link "${w%/}" "$DATA/wallpapers/$(basename "$w")"
 done
-# KWin scripts (the left-edge dial trigger), enabled.
+# KWin scripts (floating-card helper), enabled.
 for k in "$ROOT"/kwin-scripts/*/; do
     id="$(basename "$k")"
     link "${k%/}" "$DATA/kwin/scripts/$id"

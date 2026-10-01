@@ -1,24 +1,13 @@
-// Mistletoe's KWin helpers.
+// Mistletoe's KWin helper.
 //
-// 1. Left edge: pushing the pointer against the left screen edge opens the
-//    Mistletoe dial. The dial writes its global-shortcut action name (e.g.
-//    "activate widget 100") to kwinrc [Script-mistletoe-edge] action when it
-//    loads, and this script invokes that shortcut through kglobalaccel.
+// Floating cards: a desktop card pinned to float is a plasmashell window
+// titled "Mistletoe Float <id> @x,y". Keep it above other windows, out of
+// the task switcher and pager, on every desktop, and open it at x,y (where
+// the card sat on the desktop).
 //
-// 2. Floating cards: a desktop card pinned to float is a plasmashell window
-//    titled "Mistletoe Float <id> @x,y". Keep it above other windows, out of
-//    the task switcher and pager, on every desktop, and open it at x,y (where
-//    the card sat on the desktop).
-function openDial() {
-    const action = readConfig("action", "");
-    if (!action) {
-        return;
-    }
-    callDBus("org.kde.kglobalaccel", "/component/plasmashell",
-             "org.kde.kglobalaccel.Component", "invokeShortcut", action);
-}
-registerScreenEdge(KWin.ElectricLeft, openDial);
-
+// (The script once opened the dial when the pointer hit the left screen edge.
+// That fired by accident too easily; the dial opens from its gem in the strip
+// or Meta+Space instead. The package keeps its name so installs carry over.)
 function floatCard(w) {
     const m = /^Mistletoe Float \d+ @(-?\d+),(-?\d+)$/.exec(w.caption || "");
     if (!m) {

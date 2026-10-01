@@ -1,8 +1,8 @@
 /*
     Mistletoe Dial: one radial way into every app.
 
-    A gem in the strip, Meta+Space, or pushing the pointer against the left
-    screen edge opens a semicircle dial from that edge with three modes:
+    A gem in the strip, or Meta+Space, opens a semicircle dial from the left
+    screen edge with three modes:
 
       App       the menus of the window you were just using: its menus on
                 the inner ring, their entries on the outer ring, submenus
@@ -19,8 +19,7 @@
 
     Other widgets open the dial in a given mode by writing it to
     mistletoerc [Dial] nextMode and invoking the dial's shortcut, whose
-    name the dial records in mistletoerc [Dial] action (and in kwinrc for
-    the left-edge KWin script).
+    name the dial records in mistletoerc [Dial] action.
 
     Typing searches the whole current mode.
 */
@@ -373,12 +372,10 @@ PlasmoidItem {
         });
     }
 
-    // Tell other widgets and the left-edge KWin script how to open the dial.
+    // Tell other widgets how to open the dial.
     function register() {
         const action = q("activate widget " + Plasmoid.id);
-        run("kwriteconfig6 --file mistletoerc --group Dial --key action " + action
-            + " && kwriteconfig6 --file kwinrc --group Script-mistletoe-edge --key action " + action
-            + " && qdbus org.kde.KWin /KWin reconfigure");
+        run("kwriteconfig6 --file mistletoerc --group Dial --key action " + action);
     }
 
     Connections {
@@ -421,7 +418,7 @@ PlasmoidItem {
         }
     }
     toolTipMainText: i18n("Dial")
-    toolTipSubText: i18n("The active app's menus, your places and every settings page (Meta+Space, or push the pointer against the left edge)")
+    toolTipSubText: i18n("The active app's menus, your places and every settings page (Meta+Space)")
 
     Overlay {
         id: overlay

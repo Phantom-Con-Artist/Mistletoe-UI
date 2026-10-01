@@ -6,7 +6,7 @@
                 "Name": "Subhradeep Sarkar"
             }
         ],
-        "Description": "Mistletoe helpers: the left screen edge opens the dial; floating cards stay above windows",
+        "Description": "Mistletoe helper: floating cards stay above windows and on screen",
         "EnabledByDefault": false,
         "Icon": "compass",
         "Id": "mistletoe-edge",

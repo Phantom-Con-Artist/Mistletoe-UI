@@ -23,7 +23,7 @@ one built on stock KDE Plasma 6 (developed on Fedora 44, Plasma 6.7, Wayland):
 | **The strip** | One slim matte band along the bottom: the launcher, the dial, the active app with its live CPU/RAM (hover it for all open apps on an arc), the notification bell, the date, time and a faceted clock face. |
 | **Launcher fan** | Click the corner logo: apps bloom out of the corner onto gold orbits. Type to search, scroll to page, right-click to pin a favourite. |
 | **Status fan** | Click the clock: Bluetooth, network, volume, media, notifications (with Do Not Disturb) and settings on two orbits, a big winding dial, and a ring of power actions. |
-| **The dial** | `Meta+Space`, the gem in the strip, or push the pointer against the left screen edge. A rotary semicircle with three modes: the **app** you were using (its menus), your **places**, and **settings** (every System Settings page plus the Mistletoe options). Type to search. |
+| **The dial** | `Meta+Space` or the gem in the strip. A rotary semicircle with three modes: the **app** you were using (its menus), your **places**, and **settings** (every System Settings page plus the Mistletoe options). Type to search. |
 | **Desktop cards** | A big clock straight on the wallpaper, favourites, most used apps, a live power graph with tips, power buttons, and an optional YouTube/Music player. Drag, resize, or pin any card to float above your windows. |
 | **Four editions** | Dark, Light, and two special editions whose palettes come from their wallpapers: **Neon** (violet and orchid) and **Ember** (charcoal and vermilion). |
 | **Lock screen** | Cinematic: the clock on the left, one password shard low in the centre, branding top right. |
@@ -85,7 +85,7 @@ Settings restores that theme. Each Mistletoe part is its own package.
 | To | Do |
 |---|---|
 | Launch an app | Click the logo bottom-left, then an app, or type its name and press `Enter`. |
-| Open the dial | `Meta+Space`, the gem next to the logo, or push the pointer against the left screen edge. `Tab` switches App / Places / Settings, the wheel or arrow keys turn it, `Enter` opens, `Esc` closes. |
+| Open the dial | `Meta+Space` or the gem next to the logo. `Tab` switches App / Places / Settings, the wheel or arrow keys turn it, `Enter` opens, `Esc` closes. |
 | See all open apps | Hover the app name in the middle of the strip; click an icon to switch. |
 | Quick settings | Click the clock bottom-right: tiles for Bluetooth, network, volume, media, notifications and settings; power gems on the outer ring. |
 | Move, resize or float a card | Hover it: drag the three gems on top to move, the corner to resize, click the pin to float it above all windows. |
@@ -136,7 +136,7 @@ menus) and what to do about any gaps.
 | `lookandfeel/` | Global Themes (one per edition): defaults, the desktop layout script, previews. Generated. |
 | `lockscreen/` | Lock screen source; packaged as `shells/org.mistletoe.lockscreen`. |
 | `apps/mistletoe-menu/` | The bridge the widgets call: reads and clicks app menus, lists places, switches editions and fonts, measures wallpaper brightness, keeps the lock screen in sync. Plus its user service. |
-| `kwin-scripts/mistletoe-edge/` | KWin helpers: the left edge opens the dial; floating cards stay above and on screen. |
+| `kwin-scripts/mistletoe-edge/` | KWin helper: floating cards stay above and on screen. |
 | `konsole/`, `gtk/` | Konsole profiles and colour schemes; the GTK 3/4 layer. |
 | `fonts/` | Ad Astra and Mythril (original, OFL) and Exo 2 (OFL). |
 | `wallpapers/` | Vigil, Raven, Colossus, Wanderer, Neon and Ember. |

@@ -11,9 +11,9 @@ per-user, touches nothing system-wide and can be switched off like any theme.
                            │ runs commands via             │ global shortcuts
                            ▼ Plasma's executable engine    ▼ (kglobalaccel)
                   mistletoe-menu (bridge)          kwin-scripts/mistletoe-edge
-                  · app menus (D-Bus dbusmenu)     · left edge → open the dial
-                  · places · editions · fonts      · floating cards: keep above,
-                  · wallpaper sync & brightness      clamp on screen
+                  · app menus (D-Bus dbusmenu)     · floating cards: keep above,
+                  · places · editions · fonts        clamp on screen
+                  · wallpaper sync & brightness
                   · lock screen values
                            │ writes
                            ▼
@@ -81,8 +81,7 @@ is stored in `mistletoerc` so restarting the bridge keeps a custom wallpaper.
 
 ### KWin (`kwin-scripts/mistletoe-edge`)
 
-Registers the left screen edge (it invokes the dial's shortcut, whose name
-the dial records in `kwinrc`), and gives floating cards (windows titled
+Gives floating cards (windows titled
 `Mistletoe Float <id> @x,y`) keep-above, no task switcher, all desktops, and
 an on-screen position.
 
