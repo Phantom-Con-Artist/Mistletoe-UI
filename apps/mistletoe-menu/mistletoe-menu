@@ -270,6 +270,7 @@ def _sync_wallpaper(force=False):
     ensure_gtk_layer()
     lnf = subprocess.run(["kreadconfig6", "--group", "KDE", "--key", "LookAndFeelPackage"],
                          capture_output=True, text=True).stdout.strip()
+    sync_kvantum(lnf)
     images = current_wallpapers()
     if not images:
         return
@@ -293,6 +294,31 @@ def _sync_wallpaper(force=False):
                     "--group", "org.kde.image", "--group", "General", "--key", "Image",
                     image], capture_output=True)
     lock_settings()
+
+
+def sync_kvantum(lnf):
+    """Point Kvantum (the widget style of Qt apps) at the active edition's
+    theme. Kvantum keeps its choice in its own file, which a Global Theme
+    can't set; apps pick it up when they next start."""
+    edition = lnf.removeprefix("org.mistletoe.").removesuffix(".desktop")
+    name = "Mistletoe" + edition.capitalize()
+    folder = CONFIG / "Kvantum"
+    if edition not in EDITIONS or not (folder / name / f"{name}.kvconfig").exists():
+        return
+    target = folder / "kvantum.kvconfig"
+    wanted = f"theme={name}"
+    try:
+        lines = target.read_text().splitlines()
+    except OSError:
+        lines = []
+    if wanted in lines:
+        return
+    if any(line.startswith("theme=") for line in lines):
+        lines = [wanted if line.startswith("theme=") else line for line in lines]
+    else:
+        lines = ["[General]", wanted] + [line for line in lines if line != "[General]"]
+    target.write_text("\n".join(lines) + "\n")
+    print("kvantum ->", name)
 
 
 def flush_wallpaper():

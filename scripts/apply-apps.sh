@@ -75,6 +75,19 @@ w breezerc Style TitleWidgetDrawFrame false
 w breezerc Style MenuItemDrawStrongFocus false
 w breezerc Style WindowDragMode WD_FULL
 
+# Controls inside Qt apps: the Mistletoe Kvantum theme, when Kvantum is
+# installed (sudo dnf install kvantum). The Global Themes ask for the kvantum
+# style and fall back to Breeze without it; the bridge keeps Kvantum on the
+# active edition's theme.
+if [[ -n "$(find /usr/lib64/qt6/plugins/styles /usr/lib/qt6/plugins/styles -name 'libkvantum.so' 2>/dev/null | head -1)" ]]; then
+    mkdir -p "$CONF/Kvantum"
+    for k in "$(cd "$(dirname "$0")/.." && pwd)"/kvantum/*/; do
+        ln -sfn "${k%/}" "$CONF/Kvantum/$(basename "$k")"
+    done
+    [[ -e "$CONF/Kvantum/kvantum.kvconfig" ]] || printf '[General]\ntheme=Mistletoe%s\n' "$VARIANT" > "$CONF/Kvantum/kvantum.kvconfig"
+    w kdeglobals KDE widgetStyle kvantum
+fi
+
 # Konsole: the Mistletoe profile, no menubar.
 w konsolerc "Desktop Entry" DefaultProfile "Mistletoe$VARIANT.profile"
 w konsolerc KonsoleWindow ShowMenuBarByDefault false
