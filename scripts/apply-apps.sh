@@ -67,6 +67,12 @@ w breezerc Style ToolBarDrawItemSeparator false
 w breezerc Style ViewDrawFocusIndicator false
 w breezerc Style SidePanelDrawFrame false
 w breezerc Style MenuOpacity 100
+# Quieter chrome: scrollbars only while the pointer is near them, no frames
+# around docked panels or page titles, and a light highlight in menus.
+w breezerc Style ScrollBarShowOnMouseOver true
+w breezerc Style DockWidgetDrawFrame false
+w breezerc Style TitleWidgetDrawFrame false
+w breezerc Style MenuItemDrawStrongFocus false
 w breezerc Style WindowDragMode WD_FULL
 
 # Konsole: the Mistletoe profile, no menubar.
