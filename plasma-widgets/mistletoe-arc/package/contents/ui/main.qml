@@ -105,31 +105,141 @@ PlasmoidItem {
         }
     }
 
-    // Find the active app in System Monitor's per-application model. Match
-    // the desktop file id (AppId + ".desktop") first, then the display
-    // name, since some apps report a window id unlike their desktop file.
+    // Total CPU and memory (KiB) of one process row and everything below it.
+    function subtree(parentIndex, row) {
+        const idx = procs.index(row, 0, parentIndex);
+        let cpu = Number(procs.data(procs.index(row, 1, parentIndex), Process.ProcessDataModel.Value)) || 0;
+        let mem = Number(procs.data(procs.index(row, 2, parentIndex), Process.ProcessDataModel.Value)) || 0;
+        for (let c = 0; c < procs.rowCount(idx); ++c) {
+            const sub = subtree(idx, c);
+            cpu += sub.cpu;
+            mem += sub.mem;
+        }
+        return { cpu: cpu, mem: mem };
+    }
+
+    // Find a pid anywhere in the process tree; null when absent.
+    function findPid(parentIndex, pid) {
+        for (let r = 0; r < procs.rowCount(parentIndex); ++r) {
+            if (Number(procs.data(procs.index(r, 0, parentIndex), Qt.DisplayRole)) === pid) {
+                return subtree(parentIndex, r);
+            }
+            const deeper = findPid(procs.index(r, 0, parentIndex), pid);
+            if (deeper) {
+                return deeper;
+            }
+        }
+        return null;
+    }
+
+    // Pids of the active app's windows (a grouped row keeps them on its
+    // children and may report none itself).
+    function windowPids() {
+        const pids = [];
+        const add = (index) => {
+            const pid = Number(tasks.data(index, TaskManager.AbstractTasksModel.AppPid)) || 0;
+            if (pid > 0 && pids.indexOf(pid) < 0) {
+                pids.push(pid);
+            }
+        };
+        if (activeRow >= 0 && activeRow < tasks.count) {
+            const row = tasks.makeModelIndex(activeRow);
+            add(row);
+            for (let c = 0; c < tasks.rowCount(row); ++c) {
+                add(tasks.makeModelIndex(activeRow, c));
+            }
+        }
+        return pids;
+    }
+
+    // Sum CPU and memory over the app's window pids and their descendants.
+    // Works for any app with a window, installed or not, scoped or not.
+    function usageByPid() {
+        const pids = windowPids();
+        if (pids.length === 0 || procs.rowCount() === 0) {
+            return false;
+        }
+        let cpu = 0;
+        let mem = 0;
+        let found = false;
+        for (const pid of pids) {
+            const total = findPid(procs.index(-1, -1), pid);
+            if (total) {
+                found = true;
+                cpu += total.cpu;
+                mem += total.mem;
+            }
+        }
+        if (!found) {
+            return false;
+        }
+        cpuText = cpu < 10 ? cpu.toFixed(1) + "%" : Math.round(cpu) + "%";
+        memText = formatMem(mem);
+        return true;
+    }
+
+    function formatMem(kib) {
+        const units = ["K", "M", "G", "T"];
+        let v = kib;
+        let u = 0;
+        while (v >= 1024 && u < units.length - 1) {
+            v /= 1024;
+            ++u;
+        }
+        return (v < 10 && u > 0 ? v.toFixed(1) : Math.round(v)) + units[u];
+    }
+
+    // Find the active app in System Monitor's per-application model. Windows
+    // often report an id unlike their desktop file (firefox vs
+    // org.mozilla.firefox.desktop, a bare "code", a translated name), so try
+    // several keys, strictest first: exact id, launcher file, last segment of
+    // a reverse-DNS id, then the display name.
     function refreshUsage() {
-        const id = activeAppId.toLowerCase();
-        const name = activeName.toLowerCase();
-        if (!id && !name) {
-            cpuText = memText = "–";
-            return;
-        }
+        const keys = [];
+        const add = (s) => {
+            const k = String(s || "").toLowerCase().replace(/\.desktop$/, "").trim();
+            if (k && keys.indexOf(k) < 0) {
+                keys.push(k);
+            }
+        };
+        add(activeAppId);
+        const launcher = activeRow >= 0
+            ? String(tasks.data(tasks.makeModelIndex(activeRow), TaskManager.AbstractTasksModel.LauncherUrlWithoutIcon) || "") : "";
+        add(launcher.replace(/^.*\//, ""));
+        const tail = (s) => String(s || "").toLowerCase().replace(/\.desktop$/, "").split(".").pop();
         const clean = (s) => String(s || "").replace(/\u200b/g, "");
+        const name = activeName.toLowerCase();
+        const n = appStats.rowCount();
+        const menuIds = [];
+        const names = [];
+        for (let r = 0; r < n; ++r) {
+            menuIds.push(String(appStats.data(appStats.index(r, 0), Qt.DisplayRole) || "").toLowerCase().replace(/\.desktop$/, ""));
+            names.push(String(appStats.data(appStats.index(r, 3), Qt.DisplayRole) || "").toLowerCase());
+        }
         let hit = -1;
-        for (let r = 0; r < appStats.rowCount() && hit < 0; ++r) {
-            const menuId = String(appStats.data(appStats.index(r, 0), Qt.DisplayRole) || "").toLowerCase();
-            if (id && (menuId === id + ".desktop" || menuId === id)) {
-                hit = r;
+        for (let k = 0; k < keys.length && hit < 0; ++k) {
+            hit = menuIds.indexOf(keys[k]);
+        }
+        for (let k = 0; k < keys.length && hit < 0; ++k) {
+            for (let r = 0; r < n && hit < 0; ++r) {
+                if (tail(menuIds[r]) === keys[k] || menuIds[r] === tail(keys[k])) {
+                    hit = r;
+                }
             }
         }
-        for (let r = 0; r < appStats.rowCount() && hit < 0; ++r) {
-            if (name && String(appStats.data(appStats.index(r, 3), Qt.DisplayRole) || "").toLowerCase() === name) {
-                hit = r;
-            }
+        if (hit < 0 && name) {
+            hit = names.indexOf(name);
         }
         if (hit < 0) {
-            cpuText = memText = "–";
+            // Apps that don't run in their own systemd scope (started from a
+            // terminal, wrappers, some autostarts) are missing from the app
+            // model; total the window's process tree instead.
+            if (!usageByPid()) {
+                // Keep the last reading while the models are still filling in.
+                if (n > 0 && procs.rowCount() > 0) {
+                    cpuText = memText = "–";
+                }
+            }
             return;
         }
         const cpu = Number(appStats.data(appStats.index(hit, 1), Process.ProcessDataModel.Value)) || 0;
@@ -165,6 +275,11 @@ PlasmoidItem {
         enabledAttributes: ["menuId", "usage", "memory", "appName"]
     }
 
+    Process.ProcessDataModel {
+        id: procs
+        enabledAttributes: ["pid", "usage", "memory"]
+    }
+
     Timer {
         interval: 1500
         running: true
@@ -172,7 +287,15 @@ PlasmoidItem {
         triggeredOnStart: true
         onTriggered: root.refreshUsage()
     }
-    onActiveAppIdChanged: refreshUsage()
+    onActiveAppIdChanged: {
+        cpuText = memText = "–";
+        refreshUsage();
+    }
+    onActiveRowChanged: refreshUsage()
+    Connections {
+        target: appStats
+        function onRowsInserted() { Qt.callLater(root.refreshUsage) }
+    }
 
     // The raised arc, above the strip. Tooltip-type and focus-less, so it
     // floats over apps without ever becoming the active window.
