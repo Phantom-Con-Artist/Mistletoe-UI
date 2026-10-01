@@ -1,18 +1,18 @@
 /*
     Mistletoe Dashboard: the desktop as a quiet overview, built from
     separate cards. Each instance of this widget shows one card, chosen by
-    its `section` setting, and every card has its own facet shape:
+    its `section` setting. Every plate has the same shard shape:
 
-      clock      big time and date, straight on the wallpaper (no plate)
-      favorites  launcher favorites (KActivities)        chamfered all round
-      mostused   apps ranked by how often you start them mirrored shard
-      hungry     live CPU/memory graph, hungriest apps, tips   one deep TR cut
-      power      lock, sleep, restart, shut down, log out pointed hexagon
-      media      YouTube / YouTube Music player with controls   top-chamfered
+      clock      the hero: huge time and the date, straight on the wallpaper
+      hungry     "System": live CPU/memory graph, the busiest apps, a tip
+      favorites  launcher favorites (KActivities) as a one-row dock
+      media      YouTube / YouTube Music player; only a gem while asleep
+      mostused   apps ranked by how often you start them   (not placed by
+      power      lock, sleep, restart, shut down, log out   default)
 
-    The Mistletoe layout script places one of each on the desktop. Hover a
-    card for its grip (move), corner (resize) and pin (float above all
-    windows); see Card.qml.
+    The Mistletoe layout script places the clock bottom left and a column of
+    system, favorites and media on the right. Hover a card for its grip
+    (move), corner (resize) and pin (float above all windows); see Card.qml.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -41,19 +41,20 @@ PlasmoidItem {
         return Qt.rgba(c.r, c.g, c.b, a);
     }
 
-    // Default size and corner cuts [TL, TR, BR, BL] per card.
+    // Every plate is the same Mistletoe shard: top-left and bottom-right
+    // corners cut [TL, TR, BR, BL]. Cards differ only in size and content.
+    readonly property var shard: [16, 0, 16, 0]
+    // Default size per card. `bare` draws straight on the wallpaper, `slim`
+    // is a one-row bar with no vertical padding, `typing` takes the keyboard.
     readonly property var cards: ({
-        clock: { file: "ClockCard.qml", w: 352, h: 224, cuts: [0, 0, 0, 0], bare: true },
-        favorites: { file: "FavoritesCard.qml", w: 352, h: 208, cuts: [14, 14, 14, 14] },
-        mostused: { file: "MostUsedCard.qml", w: 352, h: 272, cuts: [0, 26, 0, 26] },
-        hungry: { file: "HungryCard.qml", w: 448, h: 576, cuts: [0, 56, 0, 0] },
-        power: { file: "PowerCard.qml", w: 352, h: 64, cuts: [32, 32, 32, 32] },
-        // Chamfered along the top like a screen; takes keyboard focus for search.
-        media: { file: "MediaCard.qml", w: 448, h: 352, cuts: [20, 20, 0, 0], typing: true }
+        clock: { file: "ClockCard.qml", w: 704, h: 288, cuts: [0, 0, 0, 0], bare: true },
+        favorites: { file: "FavoritesCard.qml", w: 448, h: 128, cuts: shard },
+        mostused: { file: "MostUsedCard.qml", w: 448, h: 272, cuts: shard },
+        hungry: { file: "HungryCard.qml", w: 448, h: 288, cuts: shard },
+        power: { file: "PowerCard.qml", w: 448, h: 64, cuts: shard, slim: true },
+        media: { file: "MediaCard.qml", w: 448, h: 352, cuts: shard, typing: true }
     })
     readonly property var card: cards[section] || cards.clock
-    readonly property bool pointed: section === "power"
-    readonly property bool bare: !!card.bare
 
     // ---- Placement --------------------------------------------------------
     // Cards move and resize themselves through the desktop's own layout
@@ -102,7 +103,7 @@ PlasmoidItem {
         Plate {
             anchors.fill: parent
             visible: root.pinned
-            cutTL: 12; cutBR: 12
+            cutTL: root.shard[0]; cutBR: root.shard[2]
             fill: "transparent"
             hairline: root.tint(root.bone, 0.14)
             thread: root.tint(root.gold, 0.4)

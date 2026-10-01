@@ -31,8 +31,8 @@ MouseArea {
         }
         Kirigami.Icon {
             anchors.centerIn: parent
-            width: 32
-            height: 32
+            width: Math.round(Math.min(32, button.width * 0.64))
+            height: width
             source: button.iconSource
             animated: false
         }

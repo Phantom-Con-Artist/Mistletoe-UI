@@ -1,15 +1,15 @@
 /*
-    Power card: how hard the machine is working right now.
+    System card: how hard the machine is working right now, at a glance.
 
       - A live two-minute graph of total CPU (gold area) and memory (bone
-        line), with the current values large on the right.
-      - The open apps using the most CPU (ties broken by memory), each with
-        a CPU bar relative to the busiest one.
-      - Tips worked out from those numbers every two seconds: who is
-        pinning the CPU, who holds the most memory when RAM runs high, or
-        that everything is calm.
+        line), with the current values beside it.
+      - The apps using the most CPU (ties broken by memory), each with a CPU
+        bar relative to the busiest one.
+      - A tip, only when there is something to act on: who is pinning the
+        CPU, or who holds the most memory when RAM runs high.
 
-    Click an app row to open System Monitor.
+    Compact by default; give it more height and the graph grows, then more
+    apps appear. Click an app row to open System Monitor.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -47,15 +47,17 @@ ColumnLayout {
     }
 
     readonly property int samples: 60           // 60 x 2 s = two minutes
-    // Headings, gaps and two lines of tips take about 230px; of the rest,
-    // five app rows come first, then the graph grows (90-260px), then any
-    // height left over becomes more rows.
-    readonly property real flexible: height - 230
-    readonly property real graphHeight: Math.max(90, Math.min(260, flexible - 5 * 40))
-    readonly property int appsFit: Math.max(3, Math.min(10, Math.floor((flexible - graphHeight) / 40)))
+    // The heading and gaps take 40px and a tip, when shown, 44px. The graph
+    // keeps at least 72px; the rest holds as many app rows as fit, and the
+    // graph stretches into whatever the rows leave over.
+    readonly property int rowHeight: 32
+    readonly property real graphMin: 72
+    readonly property var tip: tips.length > 0 && tips[0].level >= 1 ? tips[0] : null
+    readonly property real flexible: height - 40 - (tip ? 44 : 0)
+    readonly property int appsFit: Math.max(1, Math.min(8, Math.floor((flexible - graphMin) / rowHeight)))
     property var cpuHistory: []
     property var memHistory: []
-    property var apps: []                        // top 5 by CPU
+    property var apps: []                        // busiest first
     property var tips: []
 
     function clean(s) {
@@ -83,18 +85,25 @@ ColumnLayout {
             if (!name) {
                 continue;
             }
+            const cpu = Number(appStats.data(appStats.index(r, 2), Process.ProcessDataModel.Value)) || 0;
+            const mem = Number(appStats.data(appStats.index(r, 3), Process.ProcessDataModel.Value)) || 0;
+            // Only apps that are using something worth a row: idle
+            // background helpers would just be a list of zeros.
+            if (cpu < 0.5 && mem < 200 * 1024) {    // KiB
+                continue;
+            }
             rows.push({
                 name: name,
                 icon: String(appStats.data(appStats.index(r, 1), Qt.DisplayRole) || "application-x-executable"),
-                cpu: Number(appStats.data(appStats.index(r, 2), Process.ProcessDataModel.Value)) || 0,
-                mem: Number(appStats.data(appStats.index(r, 3), Process.ProcessDataModel.Value)) || 0,
+                cpu: cpu,
+                mem: mem,
                 memText: shortMem(appStats.data(appStats.index(r, 3), Qt.DisplayRole))
             });
         }
         const byCpu = rows.slice().sort((a, b) => (b.cpu - a.cpu) || (b.mem - a.mem));
         const byMem = rows.slice().sort((a, b) => b.mem - a.mem);
-        apps = byCpu.slice(0, appsFit);
         tips = makeTips(byCpu, byMem);
+        apps = byCpu.slice(0, appsFit);
     }
 
     // Two tips at most, the most pressing first.
@@ -140,9 +149,9 @@ ColumnLayout {
     // ---- Heading ------------------------------------------------------------
     SectionLabel {
         Layout.fillWidth: true
-        // Stay clear of the deep top-right cut.
-        Layout.rightMargin: 36
-        text: i18n("Power")
+        // Clear of the pin, which appears top right on hover.
+        Layout.rightMargin: 14
+        text: i18n("System")
         note: i18n("last 2 min")
         gold: card.dash.gold
         bone: card.dash.bone
@@ -151,19 +160,22 @@ ColumnLayout {
     // ---- Graph and readouts ---------------------------------------------
     RowLayout {
         Layout.fillWidth: true
-        Layout.topMargin: 16
+        Layout.fillHeight: true
+        Layout.minimumHeight: card.graphMin
+        Layout.topMargin: 12
         spacing: 20
 
         Canvas {
             id: graph
             Layout.fillWidth: true
-            Layout.preferredHeight: card.graphHeight
+            Layout.fillHeight: true
             renderStrategy: Canvas.Cooperative
 
             readonly property var cpu: card.cpuHistory
             readonly property var mem: card.memHistory
             onCpuChanged: requestPaint()
             onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
 
             onPaint: {
                 const ctx = getContext("2d");
@@ -219,14 +231,15 @@ ColumnLayout {
             }
         }
 
-        Column {
+        // CPU and memory side by side, each a key over its value.
+        Row {
             Layout.alignment: Qt.AlignVCenter
-            spacing: 14
+            spacing: 18
             Repeater {
                 model: [
                     { key: i18n("CPU"), value: Math.round(cpuTotal.value || 0) + "%", sub: "", gold: true },
                     { key: i18n("Memory"), value: Math.round(memPercent.value || 0) + "%",
-                      sub: card.shortMem(memUsed.formattedValue) + " / " + card.shortMem(memTotal.formattedValue), gold: false }
+                      sub: card.shortMem(memUsed.formattedValue), gold: false }
                 ]
                 Column {
                     required property var modelData
@@ -248,16 +261,24 @@ ColumnLayout {
                         }
                     }
                     Text {
+                        id: readout
+                        // Room for "100%", so the pair never shifts.
+                        width: Math.ceil(widest.width)
                         text: modelData.value
                         color: card.dash.bone
                         font.family: "Mistletoe Accent"
                         font.pixelSize: 26
                         font.weight: Font.Light
                         font.features: { "tnum": 1 }
+                        TextMetrics {
+                            id: widest
+                            font: readout.font
+                            text: "100%"
+                        }
                     }
                     Text {
-                        visible: modelData.sub.length > 0
-                        text: modelData.sub
+                        // Always a line tall, so both values share a baseline.
+                        text: modelData.sub || " "
                         color: card.dash.tint(card.dash.bone, 0.5)
                         font.family: "Mistletoe Text"
                         font.pixelSize: 10
@@ -267,21 +288,16 @@ ColumnLayout {
         }
     }
 
-    // ---- Top apps -----------------------------------------------------------
-    SectionLabel {
-        Layout.fillWidth: true
-        Layout.topMargin: 22
-        Layout.bottomMargin: 6
-        text: i18n("Hungriest apps")
-        note: i18n("CPU · RAM")
-        gold: card.dash.gold
-        bone: card.dash.bone
+    // ---- Busiest apps -------------------------------------------------------
+    Item {
+        Layout.preferredHeight: 14
     }
     Repeater {
         model: card.apps
         delegate: AppRow {
             required property var modelData
             Layout.fillWidth: true
+            Layout.preferredHeight: card.rowHeight
             iconSource: modelData.icon
             title: modelData.name
             value: (modelData.cpu < 10 ? modelData.cpu.toFixed(1) : Math.round(modelData.cpu)) + "%"
@@ -294,44 +310,33 @@ ColumnLayout {
         }
     }
 
-    // ---- Tips -----------------------------------------------------------------
-    SectionLabel {
+    // ---- Tip (only when there is something to act on) ---------------------------
+    RowLayout {
+        visible: card.tip !== null
         Layout.fillWidth: true
-        Layout.topMargin: 22
-        Layout.bottomMargin: 8
-        text: i18n("Tips")
-        gold: card.dash.gold
-        bone: card.dash.bone
-    }
-    Repeater {
-        model: card.tips
-        delegate: RowLayout {
-            required property var modelData
+        Layout.topMargin: 8
+        Layout.preferredHeight: 36
+        spacing: 10
+        Gem {
+            Layout.alignment: Qt.AlignTop
+            Layout.topMargin: 3
+            Layout.preferredWidth: 10
+            Layout.preferredHeight: 10
+            fill: card.tip && card.tip.level >= 2 ? card.dash.gold : "transparent"
+            rim: card.dash.gold
+        }
+        Text {
             Layout.fillWidth: true
-            Layout.bottomMargin: 6
-            spacing: 10
-            // Gold gem for something to act on, a hollow one otherwise.
-            Gem {
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 3
-                Layout.preferredWidth: 10
-                Layout.preferredHeight: 10
-                fill: modelData.level >= 2 ? card.dash.gold : "transparent"
-                rim: modelData.level >= 1 ? card.dash.gold : card.dash.tint(card.dash.bone, 0.45)
-            }
-            Text {
-                Layout.fillWidth: true
-                text: modelData.text
-                wrapMode: Text.WordWrap
-                color: card.dash.tint(card.dash.bone, 0.85)
-                font.family: "Mistletoe Text"
-                font.pixelSize: 13
-                lineHeight: 1.2
-            }
+            Layout.fillHeight: true
+            text: card.tip ? card.tip.text : ""
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
+            color: card.dash.tint(card.dash.bone, 0.85)
+            font.family: "Mistletoe Text"
+            font.pixelSize: 12
+            lineHeight: 1.15
         }
     }
 
-    Item {
-        Layout.fillHeight: true
-    }
 }

@@ -1,6 +1,7 @@
 /*
     Favorites card: the launcher's favorites (KActivities, shared across
-    Plasma) as an icon grid; the heading names the hovered app.
+    Plasma) as a dock; the heading names the hovered app. The icons share
+    one row for as long as they fit at a usable size, then wrap.
 */
 import QtQuick
 import QtQuick.Layouts
@@ -27,11 +28,14 @@ ColumnLayout {
         bone: card.dash.bone
     }
 
-    // As many ~56px columns as fit; cells stretch so each row spans the card.
+    // One row while every favorite gets at least 40px, otherwise as many
+    // ~48px columns as fit. Cells are square, up to 52px.
     Grid {
         id: grid
-        readonly property int columns_: Math.max(1, Math.floor((width + spacing) / (56 + spacing)))
-        readonly property real cell: Math.max(32, Math.floor((width - (columns_ - 1) * spacing) / columns_))
+        readonly property int count: Math.max(1, favorites.count)
+        readonly property real fit: Math.floor((width - (count - 1) * spacing) / count)
+        readonly property int columns_: fit >= 40 ? count : Math.max(1, Math.floor((width + spacing) / (48 + spacing)))
+        readonly property real cell: Math.max(32, Math.min(52, Math.floor((width - (columns_ - 1) * spacing) / columns_)))
         Layout.fillWidth: true
         columns: columns_
         spacing: 8
@@ -41,7 +45,7 @@ ColumnLayout {
                 required property int index
                 required property var model
                 width: grid.cell
-                height: 50
+                height: grid.cell
                 iconSource: model.decoration
                 ink: card.dash.ink
                 bone: card.dash.bone

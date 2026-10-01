@@ -94,7 +94,10 @@ Item {
 
     readonly property var spec: dash.card
     readonly property bool bare: !!spec.bare
-    readonly property bool pointed: dash.section === "power"
+    readonly property bool slim: !!spec.slim
+    // No plate at rest: a bare card, or content that says it is asleep (the
+    // media card until it is opened). The plate shows while you handle it.
+    readonly property bool ghost: bare || (loader.item !== null && loader.item.quiet === true)
     readonly property bool active: hover.hovered || gripMouse.pressed || cornerMouse.pressed
 
     HoverHandler {
@@ -103,14 +106,14 @@ Item {
 
     Plate {
         anchors.fill: parent
-        // The bare clock gets a plate only while you're handling it.
-        visible: !card.bare || card.active
-        opacity: card.bare ? 0.6 : 1
-        cutTL: card.pointed ? height / 2 : card.spec.cuts[0]
-        cutTR: card.pointed ? height / 2 : card.spec.cuts[1]
-        cutBR: card.pointed ? height / 2 : card.spec.cuts[2]
-        cutBL: card.pointed ? height / 2 : card.spec.cuts[3]
-        fill: card.dash.tint(card.dash.ink, card.bare ? 0.5 : 0.97)
+        // A ghost card gets a plate only while you're handling it.
+        visible: !card.ghost || card.active
+        opacity: card.ghost ? 0.6 : 1
+        cutTL: card.spec.cuts[0]
+        cutTR: card.spec.cuts[1]
+        cutBR: card.spec.cuts[2]
+        cutBL: card.spec.cuts[3]
+        fill: card.dash.tint(card.dash.ink, card.ghost ? 0.5 : 0.97)
         hairline: card.dash.tint(card.dash.bone, card.floating ? 0.22 : 0.10)
         thread: card.dash.tint(card.dash.gold, 0.85)
     }
@@ -130,10 +133,11 @@ Item {
             setSource(card.spec.file, { dash: card.dash });
         }
         anchors.fill: parent
-        anchors.leftMargin: card.bare ? 0 : card.pointed ? parent.height / 2 : 28
-        anchors.rightMargin: card.pointed ? parent.height / 2 : 28
-        anchors.topMargin: card.bare || card.pointed ? 0 : 26
-        anchors.bottomMargin: card.bare || card.pointed ? 0 : 26
+        // One inner padding for every plate.
+        anchors.leftMargin: card.bare ? 0 : 24
+        anchors.rightMargin: card.bare ? 0 : 24
+        anchors.topMargin: card.bare || card.slim ? 0 : 24
+        anchors.bottomMargin: card.bare || card.slim ? 0 : 24
         Component.onCompleted: load()
     }
 
@@ -157,7 +161,7 @@ Item {
                 return Qt.point(g.x - press.x, g.y - press.y);
             }
             anchors.horizontalCenter: parent.horizontalCenter
-            y: card.pointed ? 2 : 6
+            y: card.slim ? 2 : 6
             width: 64
             height: 16
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
@@ -192,14 +196,14 @@ Item {
         PinGem {
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.rightMargin: card.pointed ? parent.height / 2 - 11 : (card.spec.cuts[1] > 30 ? card.spec.cuts[1] - 8 : 10)
-            anchors.topMargin: card.pointed ? (parent.height - 22) / 2 : (card.spec.cuts[1] > 30 ? 10 : 8)
+            anchors.rightMargin: 8
+            anchors.topMargin: 8
             dash: card.dash
             pinned: card.floating
             onToggled: card.pinToggled()
         }
 
-        // Resize corner: a gold wedge along the bottom-right.
+        // Resize corner: gold strokes just inside the bottom-right cut.
         MouseArea {
             id: cornerMouse
             property point press
@@ -209,8 +213,8 @@ Item {
             }
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            width: 22
-            height: 22
+            width: 34
+            height: 34
             cursorShape: Qt.SizeFDiagCursor
             preventStealing: true
             onPressed: (mouse) => {
@@ -233,7 +237,8 @@ Item {
                     const g = card.dash.gold;
                     ctx.strokeStyle = Qt.rgba(g.r, g.g, g.b, 0.9);
                     ctx.lineWidth = 1;
-                    for (const o of [6, 11, 16]) {
+                    const cut = card.spec.cuts[2] || 0;
+                    for (const o of [cut + 5, cut + 10, cut + 15]) {
                         ctx.beginPath();
                         ctx.moveTo(width - 3, height - o);
                         ctx.lineTo(width - o, height - 3);
